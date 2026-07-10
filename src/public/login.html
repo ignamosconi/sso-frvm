@@ -60,11 +60,63 @@
         throw new Error(data.message || 'Error desconocido al autenticar.');
       }
 
-      alert('¡Login Exitoso!\nBienvenido ' + data.nombre + ' ' + data.apellido);
+      // --- Pantalla de éxito dinámica (Fondo blanco y cartel verde) ---
       
+      // 1. Cambiamos los estilos del body
+      document.body.style.background = '#ffffff';
+      document.body.style.minHeight = '100vh';
+      document.body.style.display = 'flex';
+      document.body.style.alignItems = 'center';
+      document.body.style.justifyContent = 'center';
+      document.body.style.margin = '0';
+
+      // 2. Reemplazamos el contenido sumando el logo institucional abajo
+      document.body.innerHTML = `
+        <div style="text-align: center; font-family: 'Inter', sans-serif; padding: 2rem;">
+          <!-- Cartel Verde Estilizado -->
+          <div style="
+            background-color: #ecfdf5; 
+            border: 1px solid #10b981; 
+            color: #065f46; 
+            padding: 1rem 2.5rem; 
+            border-radius: 8px; 
+            display: inline-block; 
+            font-size: 18px; 
+            font-weight: 600; 
+            margin-bottom: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          ">
+            ¡Logueo exitoso!
+          </div>
+          
+          <!-- Texto Secundario -->
+          <p style="color: #64748b; font-size: 14px; margin: 0 0 2.5rem 0;">
+            Podés cerrar esta página ahora.
+          </p>
+
+          <!-- Logo Horizontal UTN FRVM -->
+          <div style="animation: fadeIn 0.6s ease-out;">
+            <img src="/app/assets/logo-completo.png" alt="UTN FRVM" style="
+              width: 100%;
+              max-width: 280px;
+              height: auto;
+              opacity: 0.9;
+            ">
+          </div>
+        </div>
+
+        <!-- Pequeña animación para que el logo aparezca suavemente -->
+        <style>
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        </style>
+      `;
+
+      // 3. Ejecutamos la comunicación con la ventana madre
       if (window.opener) {
         window.opener.postMessage({ status: 'success', user: data }, '*');
-        window.close();
       }
 
     } catch (err) {
