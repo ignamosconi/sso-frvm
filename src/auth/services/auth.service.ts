@@ -58,12 +58,9 @@ export class AuthService implements IAuthService {
       throw new BadRequestException('Error al recuperar los datos del estudiante.');
     }
 
-    const email = userData.persona?.email;
-    if (!email || email.trim().toLowerCase() === 'none') {
-      throw new BadRequestException(
-        'Debe ingresar a autogestión, ir al menú lateral, datos de usuario, y cargar su mail y teléfono.',
-      );
-    }
+    const email = (userData.persona?.email && userData.persona.email.trim().toLowerCase() !== 'none') 
+      ? userData.persona.email.trim() 
+      : "";
 
     return {
       sub: userData.id.toString(),

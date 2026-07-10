@@ -20,6 +20,17 @@
       });
     });
 
+    window.addEventListener('pageshow', (event) => {
+      // Si la página se restauró desde el caché del navegador...
+      if (event.persisted) {
+        // 1. Ocultamos instantáneamente todo el contenido para que no flashee la pantalla de éxito
+        document.body.style.display = 'none';
+        
+        // 2. Forzamos la recarga limpia desde el servidor
+        window.location.reload();
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('loginForm').reset();
     });
