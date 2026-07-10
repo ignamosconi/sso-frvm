@@ -6,7 +6,7 @@ import type { IAuthService } from '../services/auth.service.interface';
 import { LoginRequestDto } from '../dtos/login-request.dto';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto';
 
-@Controller('oauth')
+@Controller(process.env.AUTH_ROUTE_PATH || 'oauth')
 export class AuthController implements IAuthController {
   constructor(
     @Inject('IAuthService')

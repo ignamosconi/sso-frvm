@@ -91,7 +91,8 @@
     errorBox.style.display = 'none';
 
     try {
-      const response = await fetch('/oauth/login', {
+      // window.location.pathname toma automáticamente la ruta actual del navegador (ej: /oauth/login)
+      const response = await fetch(window.location.pathname, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ legajo, password })
