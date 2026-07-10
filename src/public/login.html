@@ -9,157 +9,53 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/app/styles/style.css">
 
-  <script>
-    window.addEventListener('load', () => {
-      // requestAnimationFrame asegura que el navegador ya procesó el layout y el CSS del blur
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const card = document.querySelector('.login-card');
-          if (card) card.classList.add('visible');
-        });
-      });
-    });
-
-    window.addEventListener('pageshow', (event) => {
-      // Si la página se restauró desde el caché del navegador...
-      if (event.persisted) {
-        // 1. Ocultamos instantáneamente todo el contenido para que no flashee la pantalla de éxito
-        document.body.style.display = 'none';
-        
-        // 2. Forzamos la recarga limpia desde el servidor
-        window.location.reload();
-      }
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('loginForm').reset();
-    });
-  </script>
+  <script src="/app/scripts/init.js"></script>
 </head>
 
 <body>
 
-<div class="login-wrap">
-  <div class="login-card">
-    <div class="logo-row">
-      <div class="logo-circle">
-        <img src="/app/assets/logo-utn.png" alt="UTN">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo-row">
+        <div class="logo-circle">
+          <img src="/app/assets/logo-utn.png" alt="UTN">
+        </div>
+        <div class="logo-text"><strong>UTN FRVM</strong></div>
       </div>
-      <div class="logo-text"><strong>UTN FRVM</strong></div>
-    </div>
-    <h1 class="login-title">Iniciar sesión</h1>
-    <p class="login-sub">Ingresá con tus credenciales de autogestión.</p>
-    
-    <div id="errorBox" class="error-msg"></div>
-
-    <!-- Se añade autocomplete off general -->
-    <form id="loginForm" onsubmit="executeLogin(event)" autocomplete="off">
-      <label class="field-label">Legajo</label>
-      <!-- Se rompe la persistencia con new-password -->
-      <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" autocomplete="new-password" required>
+      <h1 class="login-title">Iniciar sesión</h1>
+      <p class="login-sub">Ingresá con tus credenciales de autogestión.</p>
       
-      <label class="field-label">Contraseña</label>
-      <input id="password" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" required>
-      
-      <button type="submit" class="btn-login">Ingresar</button>
-    </form>
+      <div id="errorBox" class="error-msg"></div>
 
-    <hr class="divider">
-    <p class="login-footer">Tus credenciales no se comparten con NINGUNA app.</p>
-    
-    <!-- Nueva fila de botones institucionales y de auditoría -->
-    <div class="links-row">
-      <a href="https://github.com/ignamosconi/sso-frvm" target="_blank" class="link-btn" title="Auditar Repositorio en GitHub">
-        <img src="/app/assets/github.svg" alt="GitHub">
-        Este repo
-      </a>
-      <a href="https://www.frvm.utn.edu.ar/" target="_blank" class="link-btn" title="Página Principal UTN FRVM">
-        <img src="/app/assets/link.svg" alt="UTN FRVM">
-        frvm.utn.edu.ar
-      </a>
+      <!-- Se añade autocomplete off general -->
+      <form id="loginForm" onsubmit="executeLogin(event)" autocomplete="off">
+        <label class="field-label">Legajo</label>
+        <!-- Se rompe la persistencia con new-password -->
+        <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" autocomplete="new-password" required>
+        
+        <label class="field-label">Contraseña</label>
+        <input id="password" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" required>
+        
+        <button type="submit" class="btn-login">Ingresar</button>
+      </form>
+
+      <hr class="divider">
+      <p class="login-footer">Tus credenciales no se comparten con NINGUNA app.</p>
+      
+      <!-- Nueva fila de botones institucionales y de auditoría -->
+      <div class="links-row">
+        <a href="https://github.com/ignamosconi/sso-frvm" target="_blank" class="link-btn" title="Auditar Repositorio en GitHub">
+          <img src="/app/assets/github.svg" alt="GitHub">
+          Este repo
+        </a>
+        <a href="https://www.frvm.utn.edu.ar/" target="_blank" class="link-btn" title="Página Principal UTN FRVM">
+          <img src="/app/assets/link.svg" alt="UTN FRVM">
+          frvm.utn.edu.ar
+        </a>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  async function executeLogin(event) {
-    event.preventDefault();
-    const errorBox = document.getElementById('errorBox');
-    const legajo = document.getElementById('legajo').value;
-    const password = document.getElementById('password').value;
-    
-    errorBox.style.display = 'none';
-
-    try {
-      // window.location.pathname toma automáticamente la ruta actual del navegador (ej: /oauth/login)
-      const response = await fetch(window.location.pathname, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ legajo, password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error desconocido al autenticar.');
-      }
-
-      // --- Pantalla de éxito dinámica (Fondo blanco y cartel verde) ---
-      document.body.style.background = '#ffffff';
-      document.body.style.minHeight = '100vh';
-      document.body.style.display = 'flex';
-      document.body.style.alignItems = 'center';
-      document.body.style.justifyContent = 'center';
-      document.body.style.margin = '0';
-
-      document.body.innerHTML = `
-        <div style="text-align: center; font-family: 'Inter', sans-serif; padding: 2rem;">
-          <div style="
-            background-color: #ecfdf5; 
-            border: 1px solid #10b981; 
-            color: #065f46; 
-            padding: 1rem 2.5rem; 
-            border-radius: 8px; 
-            display: inline-block; 
-            font-size: 18px; 
-            font-weight: 600; 
-            margin-bottom: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-          ">
-            ¡Logueo exitoso!
-          </div>
-          
-          <p style="color: #64748b; font-size: 14px; margin: 0 0 2.5rem 0;">
-            Podés cerrar esta página ahora.
-          </p>
-
-          <div style="animation: fadeIn 0.6s ease-out;">
-            <img src="/app/assets/logo-completo.png" alt="UTN FRVM" style="
-              width: 100%;
-              max-width: 280px;
-              height: auto;
-              opacity: 0.9;
-            ">
-          </div>
-        </div>
-
-        <style>
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        </style>
-      `;
-
-      if (window.opener) {
-        window.opener.postMessage({ status: 'success', user: data }, '*');
-      }
-
-    } catch (err) {
-      errorBox.textContent = err.message;
-      errorBox.style.display = 'block';
-    }
-  }
-</script>
+  <script src="/app/scripts/login.js"></script>
 </body>
 </html>
