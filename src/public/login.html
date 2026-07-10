@@ -2,28 +2,28 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-
-  <!-- Evitar parpadeo -->
-  <style>
-    body { opacity: 0; transition: opacity 0.2s ease; }
-  </style>
-  <script>
-    window.addEventListener('load', () => {
-      document.body.style.opacity = '1';
-    });
-    // Forzar limpieza total del formulario apenas se inicializa la carga
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('loginForm').reset();
-    });
-  </script>
-  
-  <link rel="stylesheet" href="/app/style.css">
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="/app/assets/logo-utn.png">
   <title>SSO - UTN FRVM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app/style.css">
+
+  <script>
+    window.addEventListener('load', () => {
+      // requestAnimationFrame asegura que el navegador ya procesó el layout y el CSS del blur
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const card = document.querySelector('.login-card');
+          if (card) card.classList.add('visible');
+        });
+      });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loginForm').reset();
+    });
+  </script>
 </head>
 
 <body>
