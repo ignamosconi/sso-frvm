@@ -8,9 +8,12 @@
     body { opacity: 0; transition: opacity 0.2s ease; }
   </style>
   <script>
-    // Se ejecuta apenas carga el CSS (al detectar que el body ya está listo)
     window.addEventListener('load', () => {
       document.body.style.opacity = '1';
+    });
+    // Forzar limpieza total del formulario apenas se inicializa la carga
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loginForm').reset();
     });
   </script>
   
@@ -21,9 +24,7 @@
   <title>SSO - UTN FRVM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/app/style.css">
 </head>
-
 
 <body>
 
@@ -36,22 +37,36 @@
       <div class="logo-text"><strong>UTN FRVM</strong></div>
     </div>
     <h1 class="login-title">Iniciar sesión</h1>
-    <p class="login-sub">Ingresá con tus credenciales de autogestión</p>
+    <p class="login-sub">Ingresá con tus credenciales de autogestión.</p>
     
     <div id="errorBox" class="error-msg"></div>
 
-    <form id="loginForm" onsubmit="executeLogin(event)">
+    <!-- Se añade autocomplete off general -->
+    <form id="loginForm" onsubmit="executeLogin(event)" autocomplete="off">
       <label class="field-label">Legajo</label>
-      <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" required>
+      <!-- Se rompe la persistencia con new-password -->
+      <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" autocomplete="new-password" required>
       
       <label class="field-label">Contraseña</label>
-      <input id="password" class="field-input" type="password" placeholder="••••••••" required>
+      <input id="password" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" required>
       
       <button type="submit" class="btn-login">Ingresar</button>
     </form>
 
     <hr class="divider">
-    <p class="login-footer">Al ingresar confirmás que sos parte de UTN FRVM.<br>Tus credenciales no se comparten con NINGUNA app.</p>
+    <p class="login-footer">Tus credenciales no se comparten con NINGUNA app.</p>
+    
+    <!-- Nueva fila de botones institucionales y de auditoría -->
+    <div class="links-row">
+      <a href="https://github.com/ignamosconi/sso-frvm" target="_blank" class="link-btn" title="Auditar Repositorio en GitHub">
+        <img src="/app/assets/github.svg" alt="GitHub">
+        Este repo
+      </a>
+      <a href="https://www.frvm.utn.edu.ar/" target="_blank" class="link-btn" title="Página Principal UTN FRVM">
+        <img src="/app/assets/link.svg" alt="UTN FRVM">
+        frvm.utn.edu.ar
+      </a>
+    </div>
   </div>
 </div>
 
@@ -78,8 +93,6 @@
       }
 
       // --- Pantalla de éxito dinámica (Fondo blanco y cartel verde) ---
-      
-      // 1. Cambiamos los estilos del body
       document.body.style.background = '#ffffff';
       document.body.style.minHeight = '100vh';
       document.body.style.display = 'flex';
@@ -87,10 +100,8 @@
       document.body.style.justifyContent = 'center';
       document.body.style.margin = '0';
 
-      // 2. Reemplazamos el contenido sumando el logo institucional abajo
       document.body.innerHTML = `
         <div style="text-align: center; font-family: 'Inter', sans-serif; padding: 2rem;">
-          <!-- Cartel Verde Estilizado -->
           <div style="
             background-color: #ecfdf5; 
             border: 1px solid #10b981; 
@@ -106,12 +117,10 @@
             ¡Logueo exitoso!
           </div>
           
-          <!-- Texto Secundario -->
           <p style="color: #64748b; font-size: 14px; margin: 0 0 2.5rem 0;">
             Podés cerrar esta página ahora.
           </p>
 
-          <!-- Logo Horizontal UTN FRVM -->
           <div style="animation: fadeIn 0.6s ease-out;">
             <img src="/app/assets/logo-completo.png" alt="UTN FRVM" style="
               width: 100%;
@@ -122,7 +131,6 @@
           </div>
         </div>
 
-        <!-- Pequeña animación para que el logo aparezca suavemente -->
         <style>
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(8px); }
@@ -131,7 +139,6 @@
         </style>
       `;
 
-      // 3. Ejecutamos la comunicación con la ventana madre
       if (window.opener) {
         window.opener.postMessage({ status: 'success', user: data }, '*');
       }
