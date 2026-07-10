@@ -4,7 +4,7 @@ async function executeLogin(event) {
   const legajo = document.getElementById('legajo').value;
   const password = document.getElementById('password').value;
 
-  errorBox.style.display = 'none';
+  errorBox.classList.remove('visible');
 
   try {
     const response = await fetch(window.location.pathname, {
@@ -64,7 +64,10 @@ async function executeLogin(event) {
     }
 
   } catch (err) {
+    errorBox.classList.remove('visible');
+    setTimeout(() => {
     errorBox.textContent = err.message;
-    errorBox.style.display = 'block';
+    errorBox.classList.add('visible');
+    }, 275);                                //Tiempo que tarda la animación de "colapsar" en el login
   }
 }
