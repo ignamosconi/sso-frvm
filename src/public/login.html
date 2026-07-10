@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UTN FRVM - Single Sign On</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app/style.css">
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="logo-row">
+      <div class="logo-circle">
+        <img src="/app/assets/logo-utn.png" alt="UTN">
+      </div>
+      <div class="logo-text"><strong>UTN FRVM</strong></div>
+    </div>
+    <h1 class="login-title">Iniciar sesión</h1>
+    <p class="login-sub">Ingresá con tus credenciales de autogestión</p>
+    
+    <div id="errorBox" class="error-msg"></div>
+
+    <form id="loginForm" onsubmit="executeLogin(event)">
+      <label class="field-label">Legajo</label>
+      <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" required>
+      
+      <label class="field-label">Contraseña</label>
+      <input id="password" class="field-input" type="password" placeholder="••••••••" required>
+      
+      <button type="submit" class="btn-login">Ingresar</button>
+    </form>
+
+    <hr class="divider">
+    <p class="login-footer">Al ingresar confirmás que sos parte de UTN FRVM.<br>Tus credenciales no se comparten con NINGUNA app.</p>
+  </div>
+</div>
+
+<script>
+  async function executeLogin(event) {
+    event.preventDefault();
+    const errorBox = document.getElementById('errorBox');
+    const legajo = document.getElementById('legajo').value;
+    const password = document.getElementById('password').value;
+    
+    errorBox.style.display = 'none';
+
+    try {
+      const response = await fetch('/oauth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ legajo, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error desconocido al autenticar.');
+      }
+
+      alert('¡Login Exitoso!\nBienvenido ' + data.nombre + ' ' + data.apellido);
+      
+      if (window.opener) {
+        window.opener.postMessage({ status: 'success', user: data }, '*');
+        window.close();
+      }
+
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = 'block';
+    }
+  }
+</script>
+</body>
+</html>
