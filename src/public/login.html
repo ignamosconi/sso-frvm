@@ -2,12 +2,28 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+
+  <!-- Evitar parpadeo -->
+  <style>
+    body { opacity: 0; transition: opacity 0.2s ease; }
+  </style>
+  <script>
+    // Se ejecuta apenas carga el CSS (al detectar que el body ya está listo)
+    window.addEventListener('load', () => {
+      document.body.style.opacity = '1';
+    });
+  </script>
+  
+  <link rel="stylesheet" href="/app/style.css">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UTN FRVM - Single Sign On</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/app/style.css">
 </head>
+
+
 <body>
 
 <div class="login-wrap">
