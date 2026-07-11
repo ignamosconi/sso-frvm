@@ -1,0 +1,297 @@
+:root {
+  --utn-yellow: #f5a705;
+  --utn-yellow-dark: #ff9f00;
+  --utn-dark: #1a1a2e;
+
+  /* Modo oscuro (por defecto) */
+  --bg-overlay-start: rgba(10, 10, 30, 0.88);
+  --bg-overlay-end:   rgba(10, 10, 30, 0.94);
+  --card-bg:          rgba(255, 255, 255, 0.06);
+  --card-border:      rgba(255, 255, 255, 0.15);
+  --card-shadow:      rgba(0, 0, 0, 0.4);
+  --title-color:      #ffffff;
+  --sub-color:        rgba(255, 255, 255, 0.55);
+  --label-color:      rgba(255, 255, 255, 0.7);
+  --logo-text-color:  rgba(255, 255, 255, 0.8);
+  --logo-text-strong: #ffffff;
+  --input-bg:         rgba(255, 255, 255, 0.08);
+  --input-border:     rgba(255, 255, 255, 0.18);
+  --input-color:      #ffffff;
+  --input-placeholder:rgba(255, 255, 255, 0.3);
+  --divider-color:    rgba(255, 255, 255, 0.1);
+  --footer-color:     rgba(255, 255, 255, 0.35);
+  --link-btn-bg:      rgba(255, 255, 255, 0.05);
+  --link-btn-border:  rgba(255, 255, 255, 0.12);
+  --link-btn-color:   rgba(255, 255, 255, 0.65);
+}
+
+/* Modo claro */
+body.theme-light {
+  --bg-overlay-start: rgba(245, 167, 5, 0.18);
+  --bg-overlay-end:   rgba(255, 255, 255, 0.82);
+  --card-bg:          rgba(255, 255, 255, 0.75);
+  --card-border:      rgba(200, 200, 200, 0.6);
+  --card-shadow:      rgba(0, 0, 0, 0.12);
+  --title-color:      #1a1a1a;
+  --sub-color:        #666666;
+  --label-color:      #000000;
+  --logo-text-color:  #333333;
+  --logo-text-strong: #111111;
+  --input-bg:         rgba(0, 0, 0, 0.04);
+  --input-border:     rgba(0, 0, 0, 0.15);
+  --input-color:      #1a1a1a;
+  --input-placeholder:#aaaaaa;
+  --divider-color:    rgba(0, 0, 0, 0.1);
+  --footer-color:     #999999;
+  --link-btn-bg:      rgba(0, 0, 0, 0.04);
+  --link-btn-border:  rgba(0, 0, 0, 0.1);
+  --link-btn-color:   #00000;
+  --error-color: #991b1b;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+
+  background: linear-gradient(var(--bg-overlay-start), var(--bg-overlay-end)),
+              url('/app/assets/fondo-utn.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+
+
+.login-wrap {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1.5rem; /* Margen de resguardo para pantallas de celulares chicos */
+}
+
+.login-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--card-border);
+  box-shadow: 0 12px 40px var(--card-shadow);
+  border-radius: 16px;
+  padding: 2rem 2.25rem;
+  width: 100%;
+  max-width: 340px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  
+
+  /* Ocultamos la tarjeta al inicio y preparamos su transición */
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+}
+
+/* Clase de activación que inyectaremos por JS */
+.login-card.visible {
+  opacity: 1;
+}
+
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+}
+
+.logo-circle {
+  width: 42px; height: 42px;
+  background: var(--utn-yellow);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; color: #1a1200;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.logo-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.logo-text { 
+  color: var(--logo-text-color);
+}
+
+.logo-text strong { 
+  color: var(--logo-text-strong)
+}
+
+.badge {
+  display: inline-block;
+  background: var(--utn-yellow);
+  color: #1a1200;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.login-title {
+  color: var(--title-color);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.login-sub {
+  color: var(--sub-color);
+  font-size: 13px;
+  margin: 0 0 1.5rem;
+}
+
+.field-label {
+  color: var(--label-color);
+  font-size: 12px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+
+.field-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 0.5px solid var(--input-border);
+  color: var(--input-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+
+  font-size: 14px;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field-input:focus { 
+  border-color: var(--utn-yellow); 
+}
+
+.field-input::placeholder { 
+  color: var(--input-placeholder);
+}
+
+.btn-login {
+  width: 100%;
+  background: var(--utn-yellow);
+  color: #1a1200;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+
+.btn-login:hover { 
+  background: #e0b000; 
+}
+
+.error-msg {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: var(--error-color, #fc9797);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+
+  max-height: 0;
+  padding: 0 10px;
+  margin-bottom: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.25s ease, padding 0.25s ease, margin-bottom 0.25s ease;
+}
+
+.error-msg.visible {
+  max-height: 100px;
+  padding: 10px;
+  margin-bottom: 1rem;
+  opacity: 1;
+}
+
+
+.login-footer {
+  text-align: center;
+  margin-top: 1.25rem;
+  color: var(--footer-color);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.divider {
+  border: none;
+  border-top: 0.5px solid var(--divider-color);
+  margin: 1.25rem 0 1rem;
+}
+
+/* Estilos de los botones finales */
+.links-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 1.25rem;
+  width: 100%;
+}
+
+.link-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--link-btn-bg);
+  border: 0.5px solid var(--link-btn-border);
+  color: var(--link-btn-color);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.link-btn img {
+  width: 14px;
+  height: 14px;
+  filter: opacity(0.7);
+  transition: filter 0.2s ease;
+}
+
+.link-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--utn-yellow);
+  color: var(--utn-yellow);
+}
+
+.link-btn:hover img {
+  filter: opacity(1) drop-shadow(0px 0px 1px var(--utn-yellow));
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cambios para íconos en modo claro */
+body.theme-light .link-btn img {
+  filter: opacity(0.5) brightness(0);
+}
+body.theme-light .link-btn:hover img {
+  filter: opacity(1) drop-shadow(0px 0px 1px var(--utn-yellow));
+}
