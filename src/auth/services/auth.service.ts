@@ -36,7 +36,7 @@ export class AuthService implements IAuthService {
       );
       loginData = loginResponse.data;
     } catch (error) {
-      throw new UnauthorizedException('Credenciales inválidas en Autogestión.');
+      throw new UnauthorizedException('Credenciales de Autogestión inválidas.');
     }
 
     if (!loginData || !loginData.hashActual) {
