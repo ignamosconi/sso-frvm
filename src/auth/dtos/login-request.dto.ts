@@ -1,4 +1,18 @@
+import { IsString, IsNumberString, IsUrl } from 'class-validator';
+
 export class LoginRequestDto {
-  readonly legajo!: string;
-  readonly password!: string;
+  @IsNumberString()
+  client_id!: string;
+
+  @IsUrl()
+  redirect_uri!: string;
+
+  @IsString()
+  state!: string;
+
+  @IsString()
+  legajo!: string;
+
+  @IsString()
+  password!: string;
 }

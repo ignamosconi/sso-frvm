@@ -1,15 +1,19 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, Inject } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
-import { IAuthService } from './auth.service.interface';
-import { LoginRequestDto } from '../dtos/login-request.dto';
-import { RefreshRequestDto } from '../dtos/refresh-request.dto';
-import { TokenResponseDto } from '../dtos/token-response.dto';
-import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto';
-import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto';
-import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto';
+import { IAuthService } from './auth.service.interface.js';
+import type { ICodeService } from '../../code/services/code.service.interface.js';
+import type { IOAuthClientService } from '../../oauth-client/services/oauth-client.service.interface.js';
+import { LoginRequestDto } from '../dtos/login-request.dto.js';
+import { AuthorizationCodeRequestDto } from '../dtos/authorization-code-request.dto.js';
+import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
+import { CodeResponseDto } from '../dtos/code-response.dto.js';
+import { TokenResponseDto } from '../dtos/token-response.dto.js';
+import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
+import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto.js';
+import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -23,6 +27,10 @@ export class AuthService implements IAuthService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    @Inject('ICodeService')
+    private readonly codeService: ICodeService,
+    @Inject('IOAuthClientService')
+    private readonly oauthClientService: IOAuthClientService,
   ) {
     this.baseUrl = this.configService.getOrThrow<string>('AUTOGESTION_BASE_URL');
     this.accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
@@ -38,17 +46,12 @@ export class AuthService implements IAuthService {
         this.httpService.post<AutogestionLoginResponseDto>(
           `${this.baseUrl}/login`,
           {},
-          {
-            headers: {
-              nick: loginDto.legajo,
-              password: loginDto.password,
-            },
-          },
+          { headers: { nick: loginDto.legajo, password: loginDto.password } },
         ),
       );
       loginData = loginResponse.data;
     } catch {
-      throw new UnauthorizedException('Credenciales de Autogestión inválidas.');
+      throw new UnauthorizedException('Credenciales inválidas en Autogestión.');
     }
 
     if (!loginData || !loginData.hashActual) {
@@ -86,8 +89,34 @@ export class AuthService implements IAuthService {
     };
   }
 
-  async issueTokens(userInfo: UserInfoOauthDto): Promise<TokenResponseDto> {
-    const payload = { ...userInfo };
+  async issueCode(loginDto: LoginRequestDto): Promise<CodeResponseDto> {
+    const clientId = parseInt(loginDto.client_id, 10);
+
+    //Valida que el client_id exista y el redirect_uri sea el registrado
+    //No validamos client_secret acá (eso es solo server-to-server en /token)
+    const client = await this.oauthClientService.findOne(clientId).catch(() => null);
+    if (!client) throw new UnauthorizedException('client_id inválido.');
+    if (client.redirectUri !== loginDto.redirect_uri) {
+      throw new UnauthorizedException('redirect_uri no coincide con la registrada.');
+    }
+
+    const userInfo = await this.validateAndGetUserInfo(loginDto);
+    const code = this.codeService.generate(userInfo.sub, clientId);
+
+    return { code, state: loginDto.state };
+  }
+
+  async exchangeCodeForTokens(dto: AuthorizationCodeRequestDto): Promise<TokenResponseDto> {
+    const clientId = parseInt(dto.client_id, 10);
+
+    const valid = await this.oauthClientService.validateClient(clientId, dto.client_secret, dto.redirect_uri);
+    if (!valid) throw new UnauthorizedException('client_id, client_secret o redirect_uri inválidos.');
+
+    const entry = this.codeService.consume(dto.code);
+    if (!entry) throw new UnauthorizedException('El código es inválido o ya expiró.');
+    if (entry.clientId !== clientId) throw new UnauthorizedException('El código no pertenece a este cliente.');
+
+    const payload: Partial<UserInfoOauthDto> = { sub: entry.sub };
 
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -95,11 +124,8 @@ export class AuthService implements IAuthService {
         expiresIn: this.accessExpiresIn as any,
       }),
       this.jwtService.signAsync(
-        { sub: userInfo.sub },
-        {
-          secret: this.refreshSecret,
-          expiresIn: this.refreshExpiresIn as any,
-        },
+        { sub: entry.sub },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
       ),
     ]);
 
@@ -113,7 +139,6 @@ export class AuthService implements IAuthService {
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
     let payload: { sub: string };
-
     try {
       payload = await this.jwtService.verifyAsync<{ sub: string }>(
         refreshRequestDto.refresh_token,
@@ -125,10 +150,7 @@ export class AuthService implements IAuthService {
 
     const newAccessToken = await this.jwtService.signAsync(
       { sub: payload.sub },
-      {
-        secret: this.accessSecret,
-        expiresIn: this.accessExpiresIn as any,
-      },
+      { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
     );
 
     return {
@@ -139,7 +161,6 @@ export class AuthService implements IAuthService {
     };
   }
 
-  // Convierte strings como "15m" o "7d" a segundos para el campo expires_in
   private parseExpiresIn(value: string): number {
     const unit = value.slice(-1);
     const amount = parseInt(value.slice(0, -1), 10);
