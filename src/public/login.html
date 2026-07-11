@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/app/assets/logo-utn.png">
+  <title>SSO - UTN FRVM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app/styles/style.css">
+
+  <script src="/app/scripts/init.js"></script>
+</head>
+
+<body>
+
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo-row">
+        <div class="logo-circle">
+          <img src="/app/assets/logo-utn.png" alt="UTN">
+        </div>
+        <div class="logo-text"><strong>UTN FRVM</strong></div>
+      </div>
+      <h1 class="login-title">Iniciar sesión</h1>
+      <p class="login-sub">Ingresá con tus credenciales de autogestión.</p>
+      
+      <div id="errorBox" class="error-msg"></div>
+
+      <!-- Se añade autocomplete off general -->
+      <form id="loginForm" onsubmit="executeLogin(event)" autocomplete="off">
+        <label class="field-label">Legajo</label>
+        <!-- Se rompe la persistencia con new-password -->
+        <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" autocomplete="new-password" required>
+        
+        <label class="field-label">Contraseña</label>
+        <input id="password" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" required>
+        
+        <button type="submit" class="btn-login">Ingresar</button>
+      </form>
+
+      <hr class="divider">
+      <p class="login-footer">Tus credenciales no se comparten con NINGUNA app.</p>
+      
+      <!-- Nueva fila de botones institucionales y de auditoría -->
+      <div class="links-row">
+        <a href="https://github.com/ignamosconi/sso-frvm" target="_blank" class="link-btn" title="Auditar Repositorio en GitHub">
+          <img src="/app/assets/github.svg" alt="GitHub">
+          Este repo
+        </a>
+        <a href="https://www.frvm.utn.edu.ar/" target="_blank" class="link-btn" title="Página Principal UTN FRVM">
+          <img src="/app/assets/link.svg" alt="UTN FRVM">
+          frvm.utn.edu.ar
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app/scripts/login.js"></script>
+</body>
+</html>
