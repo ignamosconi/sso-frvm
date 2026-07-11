@@ -2,15 +2,20 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthController } from './controllers/auth.controller';
-import { AuthService } from './services/auth.service';
-import { JwtGuard } from './guards/jwt.guard';
+import { AuthController } from './controllers/auth.controller.js';
+import { AuthService } from './services/auth.service.js';
+import { JwtGuard } from './guards/jwt.guard.js';
+import { AdminJwtGuard } from './guards/admin-jwt.guard.js';
+import { CodeModule } from '../code/code.module.js';
+import { OAuthClientModule } from '../oauth-client/oauth-client.module.js';
 
 @Module({
   imports: [
     HttpModule,
     ConfigModule,
     JwtModule.register({}),
+    CodeModule,
+    OAuthClientModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -19,6 +24,7 @@ import { JwtGuard } from './guards/jwt.guard';
       useClass: AuthService,
     },
     JwtGuard,
+    AdminJwtGuard,
   ],
 })
 export class AuthModule {}
