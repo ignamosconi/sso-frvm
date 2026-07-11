@@ -1,9 +1,12 @@
 import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config'; // Importación añadida
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
 import { IAuthService } from './auth.service.interface';
 import { LoginRequestDto } from '../dtos/login-request.dto';
+import { RefreshRequestDto } from '../dtos/refresh-request.dto';
+import { TokenResponseDto } from '../dtos/token-response.dto';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto';
 import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto';
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto';
@@ -11,12 +14,21 @@ import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dt
 @Injectable()
 export class AuthService implements IAuthService {
   private readonly baseUrl: string;
+  private readonly accessSecret: string;
+  private readonly refreshSecret: string;
+  private readonly accessExpiresIn: string;
+  private readonly refreshExpiresIn: string;
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService // Inyección añadida
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) {
     this.baseUrl = this.configService.getOrThrow<string>('AUTOGESTION_BASE_URL');
+    this.accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
+    this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+    this.accessExpiresIn = this.configService.getOrThrow<string>('JWT_ACCESS_EXPIRES_IN');
+    this.refreshExpiresIn = this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN');
   }
 
   async validateAndGetUserInfo(loginDto: LoginRequestDto): Promise<UserInfoOauthDto> {
@@ -35,7 +47,7 @@ export class AuthService implements IAuthService {
         ),
       );
       loginData = loginResponse.data;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Credenciales de Autogestión inválidas.');
     }
 
@@ -54,13 +66,14 @@ export class AuthService implements IAuthService {
         }),
       );
       userData = userResponse.data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Error al recuperar los datos del estudiante.');
     }
 
-    const email = (userData.persona?.email && userData.persona.email.trim().toLowerCase() !== 'none') 
-      ? userData.persona.email.trim() 
-      : "";
+    const email =
+      userData.persona?.email && userData.persona.email.trim().toLowerCase() !== 'none'
+        ? userData.persona.email.trim()
+        : '';
 
     return {
       sub: userData.id.toString(),
@@ -68,8 +81,74 @@ export class AuthService implements IAuthService {
       apellido: userData.persona.apellido,
       legajo: userData.persona.alumno?.legajo || userData.nick,
       carrera: userData.persona.alumno?.especialidad?.nombre || 'No especificada',
-      email: email,
+      email,
       grupo: userData.grupo?.nombre || 'Alumno',
     };
+  }
+
+  async issueTokens(userInfo: UserInfoOauthDto): Promise<TokenResponseDto> {
+    const payload = { ...userInfo };
+
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.accessSecret,
+        expiresIn: this.accessExpiresIn as any,
+      }),
+      this.jwtService.signAsync(
+        { sub: userInfo.sub },
+        {
+          secret: this.refreshSecret,
+          expiresIn: this.refreshExpiresIn as any,
+        },
+      ),
+    ]);
+
+    return {
+      access_token,
+      refresh_token,
+      token_type: 'Bearer',
+      expires_in: this.parseExpiresIn(this.accessExpiresIn),
+    };
+  }
+
+  async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
+    let payload: { sub: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync<{ sub: string }>(
+        refreshRequestDto.refresh_token,
+        { secret: this.refreshSecret },
+      );
+    } catch {
+      throw new UnauthorizedException('Refresh token inválido o expirado.');
+    }
+
+    const newAccessToken = await this.jwtService.signAsync(
+      { sub: payload.sub },
+      {
+        secret: this.accessSecret,
+        expiresIn: this.accessExpiresIn as any,
+      },
+    );
+
+    return {
+      access_token: newAccessToken,
+      refresh_token: refreshRequestDto.refresh_token,
+      token_type: 'Bearer',
+      expires_in: this.parseExpiresIn(this.accessExpiresIn),
+    };
+  }
+
+  // Convierte strings como "15m" o "7d" a segundos para el campo expires_in
+  private parseExpiresIn(value: string): number {
+    const unit = value.slice(-1);
+    const amount = parseInt(value.slice(0, -1), 10);
+    switch (unit) {
+      case 's': return amount;
+      case 'm': return amount * 60;
+      case 'h': return amount * 60 * 60;
+      case 'd': return amount * 60 * 60 * 24;
+      default:  return parseInt(value, 10);
+    }
   }
 }
