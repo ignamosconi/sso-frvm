@@ -1,3 +1,12 @@
+// Lee el tema antes de que el navegador pinte, evitando flash
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const theme = params.get('theme') === 'light' ? 'light' : 'dark';
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add('theme-' + theme);
+  });
+})();
+
 window.addEventListener('load', () => {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
