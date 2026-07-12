@@ -95,8 +95,8 @@ export class AuthService implements IAuthService {
 
     const client = await this.oauthClientService.findOne(clientId).catch(() => null);
     if (!client) throw new UnauthorizedException('client_id inválido.');
-    if (client.redirectUri !== loginDto.redirect_uri) {
-      throw new UnauthorizedException('redirect_uri no coincide con la registrada.');
+    if (!client.redirectUris.includes(loginDto.redirect_uri)) {
+      throw new UnauthorizedException('redirect_uri no coincide con las registradas.');
     }
 
     const userInfo = await this.validateAndGetUserInfo(loginDto);

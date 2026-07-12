@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Inject, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IOAuthClientController } from './oauth-client.controller.interface.js';
 import type { IOAuthClientService } from '../services/oauth-client.service.interface.js';
 import { CreateOAuthClientDto } from '../dtos/create-oauth-client.dto.js';
 import { UpdateOAuthClientDto } from '../dtos/update-oauth-client.dto.js';
 import { OAuthClientResponseDto } from '../dtos/oauth-client-response.dto.js';
 import { OAuthClientInfoDto } from '../dtos/oauth-client-info.dto.js';
+import { SendCredentialsEmailDto } from '../dtos/send-credentials-email.dto.js';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
 
 @ApiTags('Admin — Clientes OAuth')
 @Controller('admin/clients')
@@ -38,7 +38,7 @@ export class OAuthClientController implements IOAuthClientController {
 
   @ApiOperation({
     summary: 'Obtener nombre público del cliente OAuth',
-    description: 'Endpoint público — no requiere autenticación. Usado por el HTML del popup para mostrar el nombre de la app.',
+    description: 'Endpoint público. Usado por el HTML del popup para mostrar el nombre de la app.',
   })
   @ApiResponse({ status: 200, type: OAuthClientInfoDto })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
@@ -47,21 +47,8 @@ export class OAuthClientController implements IOAuthClientController {
     return this.oauthClientService.findInfo(id);
   }
 
-  @ApiOperation({
-    summary: 'Regenerar client secret',
-    description: 'Genera un nuevo client_secret de 256 bits para el cliente. El secret anterior queda invalidado inmediatamente.',
-  })
-  @ApiResponse({ status: 201, type: OAuthClientResponseDto })
-  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
-  @ApiBearerAuth('admin-jwt')
-  @UseGuards(AdminJwtGuard)
-  @Post(':id/regenerate-secret')
-  regenerateSecret(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
-    return this.oauthClientService.regenerateSecret(id);
-  }
-
   @ApiOperation({ summary: 'Crear nuevo cliente OAuth' })
-  @ApiResponse({ status: 201, type: OAuthClientResponseDto, description: 'El client_secret es generado automáticamente' })
+  @ApiResponse({ status: 201, type: OAuthClientResponseDto })
   @ApiBearerAuth('admin-jwt')
   @UseGuards(AdminJwtGuard)
   @Post()
@@ -90,5 +77,29 @@ export class OAuthClientController implements IOAuthClientController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.oauthClientService.remove(id);
+  }
+
+  @ApiOperation({ summary: 'Regenerar client secret' })
+  @ApiResponse({ status: 201, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Post(':id/regenerate-secret')
+  regenerateSecret(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.regenerateSecret(id);
+  }
+
+  @ApiOperation({ summary: 'Enviar credenciales por email' })
+  @ApiResponse({ status: 201, description: 'Email enviado' })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiResponse({ status: 400, description: 'Error al enviar el email' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Post(':id/send-credentials')
+  sendCredentialsByEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SendCredentialsEmailDto,
+  ): Promise<void> {
+    return this.oauthClientService.sendCredentialsByEmail(id, dto.to);
   }
 }
