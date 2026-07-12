@@ -82,6 +82,7 @@ async function executeLogin(event) {
     if (window.opener) {
       // Ya no mandamos tokens, mandamos el code para que el backend de la app lo canjee
       window.opener.postMessage({ status: 'success', code: data.code, state: data.state }, '*');
+      window.close();
     }
 
   } catch (err) {
