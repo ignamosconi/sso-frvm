@@ -3,6 +3,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto';
+import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 
 @Injectable()
 export class JwtGuard implements CanActivate {
@@ -22,10 +23,16 @@ export class JwtGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = await this.jwtService.verifyAsync<UserInfoOauthDto>(token, {
+      const payload = await this.jwtService.verifyAsync<JwtPayloadDto>(token, {
         secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
       });
+
+      if (payload.type !== 'access') {
+        throw new UnauthorizedException('El token proporcionado no es un access token.');
+      }
+
       (request as ExpressRequest & { user: UserInfoOauthDto }).user = payload;
+      
     } catch {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
