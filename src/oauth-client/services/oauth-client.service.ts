@@ -92,7 +92,7 @@ export class OAuthClientService implements IOAuthClientService {
       await this.transporter.sendMail({
         from,
         to,
-        subject: `Credenciales OAuth — ${client.clientName}`,
+        subject: `Credenciales OAuth - ${client.clientName}`,
         text: [
           `Credenciales de integración SSO FRVM para: ${client.clientName}`,
           '',
