@@ -32,7 +32,9 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
         password: configService.getOrThrow<string>('DB_PASSWORD'),
         database: configService.getOrThrow<string>('DB_NAME'),
         entities: [AdminEntity, OAuthClientEntity],
-        synchronize: true, // Solo para desarrollo
+        synchronize: false,
+        migrations: [join(__dirname, 'database', 'migrations', '*.js')],
+        migrationsRun: true,
       }),
     }),
 

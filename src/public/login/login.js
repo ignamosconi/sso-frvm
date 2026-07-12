@@ -32,7 +32,6 @@ async function executeLogin(event) {
     const successColor = isLight ? '#1a1a1a'  : '#ffffff';
     const subColor     = isLight ? '#666666'  : 'rgba(255,255,255,0.5)';
 
-    //Lo dejamos acá y no hacemos su propia página porque no tiene sentido, habría que hacer un endpoint extra para mostrar 2 textos.
     document.body.style.background     = successBg;
     document.body.style.minHeight      = '100vh';
     document.body.style.display        = 'flex';
@@ -80,7 +79,6 @@ async function executeLogin(event) {
     `;
 
     if (window.opener) {
-      // Ya no mandamos tokens, mandamos el code para que el backend de la app lo canjee
       window.opener.postMessage({ status: 'success', code: data.code, state: data.state }, '*');
       window.close();
     }

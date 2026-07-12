@@ -1,3 +1,4 @@
+//No se documenta porque es interno de autogestión
 export class AutogestionUserResponseDto {
   readonly id!: number;
   readonly nick!: string;

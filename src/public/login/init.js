@@ -18,7 +18,6 @@ window.addEventListener('load', () => {
   const clientId = params.get('client_id');
   const redirectUri = params.get('redirect_uri');
 
-  // Validación de parámetros requeridos
   if (!clientId || !redirectUri) {
     const form = document.getElementById('loginForm');
     const errorBox = document.getElementById('errorBox');
@@ -32,7 +31,6 @@ window.addEventListener('load', () => {
     return;
   }
 
-  // Carga el client_name desde la API si hay client_id en la URL
   fetch(`/admin/clients/${clientId}/info`)
     .then(res => res.ok ? res.json() : null)
     .then(data => {
