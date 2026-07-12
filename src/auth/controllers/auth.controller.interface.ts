@@ -5,11 +5,12 @@ import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
 import { CodeResponseDto } from '../dtos/code-response.dto.js';
 import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
+import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 
 export interface IAuthController {
   serveLoginPage(res: Response): void;
   login(loginDto: LoginRequestDto): Promise<CodeResponseDto>;
   token(dto: AuthorizationCodeRequestDto): Promise<TokenResponseDto>;
   refresh(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto>;
-  me(user: UserInfoOauthDto): UserInfoOauthDto;
+  me(user: JwtPayloadDto): UserInfoOauthDto;
 }

@@ -11,6 +11,7 @@ import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
 import { JwtGuard } from '../guards/jwt.guard.js';
 import { CurrentUser } from '../decorators/current-user.decorator.js';
+import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 
 @Controller(process.env.AUTH_ROUTE_PATH || 'oauth')
 export class AuthController implements IAuthController {
@@ -41,7 +42,7 @@ export class AuthController implements IAuthController {
 
   @UseGuards(JwtGuard)
   @Get('me')
-  me(@CurrentUser() user: UserInfoOauthDto): UserInfoOauthDto {
-    return user;
+  me(@CurrentUser() user: JwtPayloadDto): UserInfoOauthDto {
+    return this.authService.getCleanUserInfo(user);
   }
 }

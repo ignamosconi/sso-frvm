@@ -14,6 +14,7 @@ import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
 import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto.js';
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
+import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -113,14 +114,13 @@ export class AuthService implements IAuthService {
     if (!entry) throw new UnauthorizedException('El código es inválido o ya expiró.');
     if (entry.clientId !== clientId) throw new UnauthorizedException('El código no pertenece a este cliente.');
 
-    // Ahora el payload tiene el UserInfoOauthDto completo
     const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.signAsync(entry.userInfo, {
-        secret: this.accessSecret,
-        expiresIn: this.accessExpiresIn as any,
-      }),
       this.jwtService.signAsync(
-        entry.userInfo,
+        { ...entry.userInfo, type: 'access' },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+      ),
+      this.jwtService.signAsync(
+        { ...entry.userInfo, type: 'refresh' },
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
       ),
     ]);
@@ -134,9 +134,9 @@ export class AuthService implements IAuthService {
   }
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
-    let payload: UserInfoOauthDto;
+    let storedPayload: JwtPayloadDto;
     try {
-      payload = await this.jwtService.verifyAsync<UserInfoOauthDto>(
+      storedPayload = await this.jwtService.verifyAsync<JwtPayloadDto>(
         refreshRequestDto.refresh_token,
         { secret: this.refreshSecret },
       );
@@ -144,8 +144,14 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('Refresh token inválido o expirado.');
     }
 
+    if (storedPayload.type !== 'refresh') {
+      throw new UnauthorizedException('El token proporcionado no es un refresh token.');
+    }
+
+    const { type: _, iat: __, exp: ___, ...userInfo } = storedPayload;
+
     const newAccessToken = await this.jwtService.signAsync(
-      payload,
+      { ...userInfo, type: 'access' },
       { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
     );
 
@@ -167,5 +173,10 @@ export class AuthService implements IAuthService {
       case 'd': return amount * 60 * 60 * 24;
       default:  return parseInt(value, 10);
     }
+  }
+
+  getCleanUserInfo(payload: JwtPayloadDto): UserInfoOauthDto {
+    const { type: _, iat: __, exp: ___, ...userInfo } = payload;
+    return userInfo;
   }
 }
