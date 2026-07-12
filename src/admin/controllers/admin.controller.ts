@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { IAdminController } from './admin.controller.interface.js';
 import type { IAdminService } from '../services/admin.service.interface.js';
 import { CreateAdminDto } from '../dtos/create-admin.dto.js';
@@ -20,7 +20,7 @@ export class AdminController implements IAdminController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<AdminResponseDto> {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<AdminResponseDto> {
     return this.adminService.findOne(id);
   }
 
@@ -30,12 +30,12 @@ export class AdminController implements IAdminController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAdminDto): Promise<AdminResponseDto> {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAdminDto): Promise<AdminResponseDto> {
     return this.adminService.update(id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<void> {
+  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.adminService.remove(id);
   }
 }

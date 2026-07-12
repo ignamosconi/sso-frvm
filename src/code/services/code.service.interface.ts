@@ -1,4 +1,6 @@
+import { UserInfoOauthDto } from '../../auth/dtos/user-info-oauth.dto.js';
+
 export interface ICodeService {
-  generate(sub: string, clientId: number): string;
-  consume(code: string): { sub: string; clientId: number } | null;
+  generate(userInfo: UserInfoOauthDto, clientId: number): string;
+  consume(code: string): { userInfo: UserInfoOauthDto; clientId: number } | null;
 }

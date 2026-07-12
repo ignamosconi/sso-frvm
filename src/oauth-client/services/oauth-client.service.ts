@@ -56,4 +56,11 @@ export class OAuthClientService implements IOAuthClientService {
     const client = await this.findOne(id);
     await this.clientRepository.remove(client as OAuthClientEntity);
   }
+
+  async regenerateSecret(id: number): Promise<OAuthClientResponseDto> {
+    const client = await this.clientRepository.findOne({ where: { id } });
+    if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
+    client.clientSecret = randomBytes(32).toString('hex');
+    return this.clientRepository.save(client);
+  }
 }

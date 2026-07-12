@@ -92,8 +92,6 @@ export class AuthService implements IAuthService {
   async issueCode(loginDto: LoginRequestDto): Promise<CodeResponseDto> {
     const clientId = parseInt(loginDto.client_id, 10);
 
-    //Valida que el client_id exista y el redirect_uri sea el registrado
-    //No validamos client_secret acá (eso es solo server-to-server en /token)
     const client = await this.oauthClientService.findOne(clientId).catch(() => null);
     if (!client) throw new UnauthorizedException('client_id inválido.');
     if (client.redirectUri !== loginDto.redirect_uri) {
@@ -101,8 +99,7 @@ export class AuthService implements IAuthService {
     }
 
     const userInfo = await this.validateAndGetUserInfo(loginDto);
-    const code = this.codeService.generate(userInfo.sub, clientId);
-
+    const code = this.codeService.generate(userInfo, clientId); // <- pasa userInfo completo
     return { code, state: loginDto.state };
   }
 
@@ -116,15 +113,14 @@ export class AuthService implements IAuthService {
     if (!entry) throw new UnauthorizedException('El código es inválido o ya expiró.');
     if (entry.clientId !== clientId) throw new UnauthorizedException('El código no pertenece a este cliente.');
 
-    const payload: Partial<UserInfoOauthDto> = { sub: entry.sub };
-
+    // Ahora el payload tiene el UserInfoOauthDto completo
     const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.signAsync(payload, {
+      this.jwtService.signAsync(entry.userInfo, {
         secret: this.accessSecret,
         expiresIn: this.accessExpiresIn as any,
       }),
       this.jwtService.signAsync(
-        { sub: entry.sub },
+        entry.userInfo,
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
       ),
     ]);
@@ -138,9 +134,9 @@ export class AuthService implements IAuthService {
   }
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
-    let payload: { sub: string };
+    let payload: UserInfoOauthDto;
     try {
-      payload = await this.jwtService.verifyAsync<{ sub: string }>(
+      payload = await this.jwtService.verifyAsync<UserInfoOauthDto>(
         refreshRequestDto.refresh_token,
         { secret: this.refreshSecret },
       );
@@ -149,7 +145,7 @@ export class AuthService implements IAuthService {
     }
 
     const newAccessToken = await this.jwtService.signAsync(
-      { sub: payload.sub },
+      payload,
       { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
     );
 

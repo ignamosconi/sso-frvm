@@ -10,6 +10,6 @@ export class AuthorizationCodeRequestDto {
   @IsString()
   code!: string;
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   redirect_uri!: string;
 }
