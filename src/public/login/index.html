@@ -7,9 +7,9 @@
   <title>SSO - UTN FRVM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/app/styles/style.css">
+  <link rel="stylesheet" href="/app/login/style.css">
 
-  <script src="/app/scripts/init.js"></script>
+  <script src="/app/login/init.js"></script>
 </head>
 
 <body>
@@ -23,14 +23,12 @@
         <div class="logo-text"><strong>UTN FRVM</strong></div>
       </div>
       <h1 class="login-title">Iniciar sesión</h1>
-      <p class="login-sub">Ingresá con tus credenciales de autogestión.</p>
+      <p class="login-sub" id="loginSub">Ingresá con tus credenciales de autogestión.</p>
       
       <div id="errorBox" class="error-msg"></div>
 
-      <!-- Se añade autocomplete off general -->
       <form id="loginForm" onsubmit="executeLogin(event)" autocomplete="off">
         <label class="field-label">Legajo</label>
-        <!-- Se rompe la persistencia con new-password -->
         <input id="legajo" class="field-input" type="text" placeholder="Ej: 15288" autocomplete="new-password" required>
         
         <label class="field-label">Contraseña</label>
@@ -42,7 +40,6 @@
       <hr class="divider">
       <p class="login-footer">Tus credenciales no se comparten con NINGUNA app.</p>
       
-      <!-- Nueva fila de botones institucionales y de auditoría -->
       <div class="links-row">
         <a href="https://github.com/ignamosconi/sso-frvm" target="_blank" class="link-btn" title="Auditar Repositorio en GitHub">
           <img src="/app/assets/github.svg" alt="GitHub">
@@ -56,6 +53,6 @@
     </div>
   </div>
 
-  <script src="/app/scripts/login.js"></script>
+  <script src="/app/login/login.js"></script>
 </body>
 </html>

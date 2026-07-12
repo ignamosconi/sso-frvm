@@ -1,0 +1,23 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { AdminEntity } from '../admin/entities/admin.entity.js';
+import { AdminAuthService } from './services/admin-auth.service.js';
+import { AdminAuthController } from './controllers/admin-auth.controller.js';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([AdminEntity]),
+    ConfigModule,
+    JwtModule.register({}),
+  ],
+  controllers: [AdminAuthController],
+  providers: [
+    {
+      provide: 'IAdminAuthService',
+      useClass: AdminAuthService,
+    },
+  ],
+})
+export class AdminAuthModule {}

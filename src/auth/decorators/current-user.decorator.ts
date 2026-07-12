@@ -1,9 +1,9 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto';
+import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): UserInfoOauthDto => {
+  (_data: unknown, ctx: ExecutionContext): JwtPayloadDto => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user as UserInfoOauthDto;
+    return request.user as JwtPayloadDto;
   },
 );

@@ -4,13 +4,18 @@ async function executeLogin(event) {
   const legajo = document.getElementById('legajo').value;
   const password = document.getElementById('password').value;
 
+  const params = new URLSearchParams(window.location.search);
+  const client_id = params.get('client_id') || '';
+  const redirect_uri = params.get('redirect_uri') || '';
+  const state = params.get('state') || '';
+
   errorBox.classList.remove('visible');
 
   try {
     const response = await fetch(window.location.pathname, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ legajo, password })
+      body: JSON.stringify({ legajo, password, client_id, redirect_uri, state })
     });
 
     const data = await response.json();
@@ -19,22 +24,20 @@ async function executeLogin(event) {
       throw new Error(data.message || 'Error desconocido al autenticar.');
     }
 
-    //Lo dejamos acá y no hacemos su propia página porque no tiene sentido, habría que hacer un endpoint extra para mostrar 2 textos.
-    const params = new URLSearchParams(window.location.search);
     const isLight = params.get('theme') === 'light';
 
-    const successBg      = isLight ? '#f5f5f5'  : '#0f0f1a';
-    const cardBg         = isLight ? '#ffffff'   : 'rgba(255,255,255,0.06)';
-    const cardBorder     = isLight ? '#e0e0e0'   : 'rgba(255,255,255,0.12)';
-    const successColor   = isLight ? '#1a1a1a'   : '#ffffff';
-    const subColor       = isLight ? '#666666'   : 'rgba(255,255,255,0.5)';
+    const successBg    = isLight ? '#f5f5f5' : '#0f0f1a';
+    const cardBg       = isLight ? '#ffffff'  : 'rgba(255,255,255,0.06)';
+    const cardBorder   = isLight ? '#e0e0e0'  : 'rgba(255,255,255,0.12)';
+    const successColor = isLight ? '#1a1a1a'  : '#ffffff';
+    const subColor     = isLight ? '#666666'  : 'rgba(255,255,255,0.5)';
 
-    document.body.style.background  = successBg;
-    document.body.style.minHeight   = '100vh';
-    document.body.style.display     = 'flex';
-    document.body.style.alignItems  = 'center';
+    document.body.style.background     = successBg;
+    document.body.style.minHeight      = '100vh';
+    document.body.style.display        = 'flex';
+    document.body.style.alignItems     = 'center';
     document.body.style.justifyContent = 'center';
-    document.body.style.margin      = '0';
+    document.body.style.margin         = '0';
 
     document.body.innerHTML = `
       <div style="text-align: center; font-family: 'Inter', sans-serif; padding: 2rem;">
@@ -47,12 +50,9 @@ async function executeLogin(event) {
           box-shadow: 0 8px 32px rgba(0,0,0,0.15);
           margin-bottom: 1.5rem;
         ">
-          <div style="
-            font-size: 18px;
-            font-weight: 600;
-            color: ${successColor};
-            margin-bottom: 6px;
-          ">¡Logueo exitoso!</div>
+          <div style="font-size: 18px; font-weight: 600; color: ${successColor}; margin-bottom: 6px;">
+            ¡Logueo exitoso!
+          </div>
           <div style="
             display: inline-block;
             background: #f5a705;
@@ -71,25 +71,23 @@ async function executeLogin(event) {
         </p>
 
         <div style="animation: fadeIn 0.6s ease-out;">
-          <img src="/app/assets/${isLight ? 'logo-completo.png' : 'logo-completo-light.png'}" alt="UTN FRVM" style="
-            width: 100%;
-            max-width: 260px;
-            height: auto;
-            opacity: ${isLight ? '1' : '0.85'};
-          ">
+          <img src="/app/assets/${isLight ? 'logo-completo.png' : 'logo-completo-light.png'}"
+               alt="UTN FRVM"
+               style="width: 100%; max-width: 260px; height: auto; opacity: ${isLight ? '1' : '0.85'};">
         </div>
       </div>
     `;
 
     if (window.opener) {
-      window.opener.postMessage({ status: 'success', user: data }, '*');
+      window.opener.postMessage({ status: 'success', code: data.code, state: data.state }, '*');
+      window.close();
     }
 
   } catch (err) {
     errorBox.classList.remove('visible');
     setTimeout(() => {
-    errorBox.textContent = err.message;
-    errorBox.classList.add('visible');
-    }, 275);                                //Tiempo que tarda la animación de "colapsar" en el login
+      errorBox.textContent = err.message;
+      errorBox.classList.add('visible');
+    }, 275);
   }
 }
