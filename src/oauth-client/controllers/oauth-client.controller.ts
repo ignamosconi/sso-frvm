@@ -33,6 +33,12 @@ export class OAuthClientController implements IOAuthClientController {
   }
 
   @UseGuards(AdminJwtGuard)
+  @Post(':id/regenerate-secret')
+  regenerateSecret(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.regenerateSecret(id);
+  }
+
+  @UseGuards(AdminJwtGuard)
   @Post()
   create(@Body() dto: CreateOAuthClientDto): Promise<OAuthClientResponseDto> {
     return this.oauthClientService.create(dto);

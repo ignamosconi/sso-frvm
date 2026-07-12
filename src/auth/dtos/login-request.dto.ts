@@ -4,7 +4,7 @@ export class LoginRequestDto {
   @IsNumberString()
   client_id!: string;
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   redirect_uri!: string;
 
   @IsString()

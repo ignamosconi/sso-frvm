@@ -7,6 +7,6 @@ export class UpdateOAuthClientDto {
   clientName?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   redirectUri?: string;
 }

@@ -5,6 +5,6 @@ export class CreateOAuthClientDto {
   @MinLength(2)
   clientName!: string;
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   redirectUri!: string;
 }
