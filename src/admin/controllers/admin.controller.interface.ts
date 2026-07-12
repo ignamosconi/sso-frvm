@@ -6,6 +6,6 @@ export interface IAdminController {
   findAll(): Promise<AdminResponseDto[]>;
   findOne(id: string): Promise<AdminResponseDto>;
   create(dto: CreateAdminDto): Promise<AdminResponseDto>;
-  update(id: string, dto: UpdateAdminDto): Promise<AdminResponseDto>;
+  updateSelf(dto: UpdateAdminDto, req: any): Promise<AdminResponseDto>;
   remove(id: string): Promise<void>;
 }

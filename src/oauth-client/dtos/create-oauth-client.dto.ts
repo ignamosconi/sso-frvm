@@ -1,4 +1,4 @@
-import { IsString, IsUrl, MinLength } from 'class-validator';
+import { IsString, IsUrl, MinLength, IsArray, ArrayMaxSize, ArrayMinSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateOAuthClientDto {
@@ -7,18 +7,13 @@ export class CreateOAuthClientDto {
   @MinLength(2)
   clientName!: string;
 
-    @ApiProperty({
-    examples: {
-      localhost: {
-        summary: 'Desarrollo local',
-        value: 'http://localhost:4000/callback',
-      },
-      production: {
-        summary: 'Aplicación en producción',
-        value: 'https://app.example.com/oauth/callback',
-      },
-    },
+  @ApiProperty({
+    example: ['http://localhost:4000/callback', 'https://miapp.com/callback'],
+    description: 'Mínimo 1, máximo 5 URIs. Podés incluir URLs de desarrollo (localhost) y producción.',
   })
-  @IsUrl({ require_tld: false })
-  redirectUri!: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(5)
+  @IsUrl({ require_tld: false }, { each: true })
+  redirectUris!: string[];
 }

@@ -59,6 +59,12 @@ async function bootstrap() {
   const seeder = app.get(AdminSeeder);
   await seeder.seed();
 
+  // Health check público
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req: any, res: any) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
   await app.listen(port);
 }
 bootstrap();
