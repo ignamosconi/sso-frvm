@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -43,10 +43,14 @@ export class AdminService implements IAdminService {
     return this.toDto(await this.adminRepository.save(entity));
   }
 
-  async update(id: string, dto: UpdateAdminDto): Promise<AdminResponseDto> {
+  async updateSelf(id: string, dto: UpdateAdminDto): Promise<AdminResponseDto> {
     const admin = await this.adminRepository.findOne({ where: { id } });
     if (!admin) throw new NotFoundException(`Admin con id ${id} no encontrado.`);
-    if (dto.username) admin.username = dto.username;
+    if (dto.username && dto.username !== admin.username) {
+      const exists = await this.adminRepository.findOne({ where: { username: dto.username } });
+      if (exists) throw new ConflictException(`El username "${dto.username}" ya está en uso.`);
+      admin.username = dto.username;
+    }
     if (dto.password) admin.password = await bcrypt.hash(dto.password, 12);
     return this.toDto(await this.adminRepository.save(admin));
   }
@@ -54,6 +58,8 @@ export class AdminService implements IAdminService {
   async remove(id: string): Promise<void> {
     const admin = await this.adminRepository.findOne({ where: { id } });
     if (!admin) throw new NotFoundException(`Admin con id ${id} no encontrado.`);
+    const total = await this.adminRepository.count();
+    if (total <= 1) throw new BadRequestException('No se puede eliminar el último administrador del sistema.');
     await this.adminRepository.remove(admin);
   }
 }

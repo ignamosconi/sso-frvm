@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, ParseUUIDPipe, Request } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IAdminController } from './admin.controller.interface.js';
 import type { IAdminService } from '../services/admin.service.interface.js';
 import { CreateAdminDto } from '../dtos/create-admin.dto.js';
 import { UpdateAdminDto } from '../dtos/update-admin.dto.js';
 import { AdminResponseDto } from '../dtos/admin-response.dto.js';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Admin — Gestión de administradores')
 @ApiBearerAuth('admin-jwt')
@@ -40,16 +40,20 @@ export class AdminController implements IAdminController {
     return this.adminService.create(dto);
   }
 
-  @ApiOperation({ summary: 'Actualizar administrador' })
+  @ApiOperation({
+    summary: 'Actualizar propio usuario',
+    description: 'Un admin solo puede editar su propio usuario y contraseña.',
+  })
   @ApiResponse({ status: 200, type: AdminResponseDto })
   @ApiResponse({ status: 404, description: 'Admin no encontrado' })
-  @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAdminDto): Promise<AdminResponseDto> {
-    return this.adminService.update(id, dto);
+  @Patch('me')
+  updateSelf(@Body() dto: UpdateAdminDto, @Request() req: any): Promise<AdminResponseDto> {
+    return this.adminService.updateSelf(req.admin.sub, dto);
   }
 
   @ApiOperation({ summary: 'Eliminar administrador' })
   @ApiResponse({ status: 200, description: 'Admin eliminado' })
+  @ApiResponse({ status: 400, description: 'No se puede eliminar el último admin' })
   @ApiResponse({ status: 404, description: 'Admin no encontrado' })
   @Delete(':id')
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
