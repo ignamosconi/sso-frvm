@@ -11,7 +11,7 @@ export class UserInfoOauthDto {
   @ApiProperty({ example: 'Mosconi' })
   readonly apellido!: string;
 
-  @ApiProperty({ example: '15288' })
+  @ApiProperty({ example: '13692' })
   readonly legajo!: string;
 
   @ApiProperty({ example: 'Ingeniería en Sistemas de Información' })
