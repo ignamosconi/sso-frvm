@@ -86,7 +86,7 @@ sessionStorage.setItem('sso_state', state);
 window.open(
   `https://sso.frvm.utn.edu.ar/sso/login?client_id=TU_CLIENT_ID&redirect_uri=TU_REDIRECT_URI&state=${state}`,
   'sso-login',
-  'width=500,height=375'
+  'width=500,height=375'      //Dimensiones recomendadas
 );
 ```
 
