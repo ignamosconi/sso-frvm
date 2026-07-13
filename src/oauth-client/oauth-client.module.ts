@@ -1,0 +1,26 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { OAuthClientEntity } from './entities/oauth-client.entity.js';
+import { OAuthClientService } from './services/oauth-client.service.js';
+import { OAuthClientController } from './controllers/oauth-client.controller.js';
+import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard.js';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([OAuthClientEntity]),
+    ConfigModule,
+    JwtModule.register({}),
+  ],
+  controllers: [OAuthClientController],
+  providers: [
+    {
+      provide: 'IOAuthClientService',
+      useClass: OAuthClientService,
+    },
+    AdminJwtGuard,
+  ],
+  exports: ['IOAuthClientService'],
+})
+export class OAuthClientModule {}
