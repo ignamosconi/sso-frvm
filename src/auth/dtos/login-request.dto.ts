@@ -14,7 +14,7 @@ export class LoginRequestDto {
   @IsString()
   state!: string;
 
-  @ApiProperty({ example: '15288' })
+  @ApiProperty({ example: '13692' })
   @IsString()
   legajo!: string;
 
