@@ -78,8 +78,18 @@ async function executeLogin(event) {
       </div>
     `;
 
+    
     if (window.opener) {
-      window.opener.postMessage({ status: 'success', code: data.code, state: data.state }, '*');
+      let targetOrigin = '*';
+      try {
+        targetOrigin = new URL(redirect_uri).origin;
+      } catch {
+        // redirect_uri inválida: el backend ya la validó, pero si por alguna razón
+        // llegamos acá con una URL malformada, cerramos sin enviar el code.
+        window.close();
+        return;
+      }
+      window.opener.postMessage({ status: 'success', code: data.code, state: data.state }, targetOrigin);
       window.close();
     }
 
