@@ -101,6 +101,6 @@ export class OAuthClientController implements IOAuthClientController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SendCredentialsEmailDto,
   ): Promise<void> {
-    return this.oauthClientService.sendCredentialsByEmail(id, dto.to);
+    return this.oauthClientService.sendCredentialsByEmail(id, dto.to, dto.plainSecret);
   }
 }

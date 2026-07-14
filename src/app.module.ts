@@ -14,6 +14,8 @@ import { CodeModule } from './code/code.module.js';
 import { AdminEntity } from './admin/entities/admin.entity.js';
 import { OAuthClientEntity } from './oauth-client/entities/oauth-client.entity.js';
 import { RefreshTokenEntity } from './refresh-token/entities/refresh-token.entity.js';
+import { CredentialTokenEntity } from './credential-token/entities/credential-token.entity.js';
+import { CredentialTokenModule } from './credential-token/credential-token.module.js';
 import { AdminSeeder } from './database/seeders/admin.seeder.js';
 
 @Module({
@@ -39,6 +41,7 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
           AdminEntity, 
           OAuthClientEntity,
           RefreshTokenEntity,
+          CredentialTokenEntity,
         ],
         synchronize: false,
         migrations: [join(__dirname, 'database', 'migrations', '*.js')],
@@ -61,6 +64,7 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
     AdminAuthModule,
     OAuthClientModule,
     CodeModule,
+    CredentialTokenModule,
   ],
   providers: [    
     AdminSeeder,
