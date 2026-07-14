@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
@@ -39,12 +42,28 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
     }),
 
     TypeOrmModule.forFeature([AdminEntity]),
+
+    ThrottlerModule.forRoot([
+      {
+        name: 'global',
+        ttl: 60000,   // ventana de 60 segundos
+        limit: 30,    // máximo 30 requests por IP en esa ventana (endpoints generales)
+      },
+    ]),
+
     AuthModule,
     AdminModule,
     AdminAuthModule,
     OAuthClientModule,
     CodeModule,
   ],
-  providers: [AdminSeeder],
+  providers: [    
+    AdminSeeder,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
+  
 })
 export class AppModule {}

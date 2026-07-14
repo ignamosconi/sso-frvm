@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Res, Inject, UseGuards } from '@nestjs/common';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { join } from 'path';
 import { IAuthController } from './auth.controller.interface.js';
@@ -36,6 +37,7 @@ export class AuthController implements IAuthController {
   @ApiResponse({ status: 201, type: CodeResponseDto })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas o client_id/redirect_uri incorrectos' })
   @ApiResponse({ status: 400, description: 'Body malformado' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })  // 5 intentos por minuto por IP
   @Post('login')
   async login(@Body() loginDto: LoginRequestDto): Promise<CodeResponseDto> {
     return this.authService.issueCode(loginDto);
@@ -47,6 +49,7 @@ export class AuthController implements IAuthController {
   })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 401, description: 'Code inválido, expirado, o credenciales de cliente incorrectas' })
+  @Throttle({ default: { ttl: 60000, limit: 10 } })  // 10 canjes por minuto por IP
   @Post('token')
   async token(@Body() dto: AuthorizationCodeRequestDto): Promise<TokenResponseDto> {
     return this.authService.exchangeCodeForTokens(dto);

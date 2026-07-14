@@ -1,4 +1,5 @@
 import { Controller, Post, Body, Inject } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IAdminAuthController } from './admin-auth.controller.interface.js';
 import type { IAdminAuthService } from '../services/admin-auth.service.interface.js';
 import { AdminLoginRequestDto } from '../dtos/admin-login-request.dto.js';
@@ -18,6 +19,7 @@ export class AdminAuthController implements IAdminAuthController {
   @ApiOperation({ summary: 'Login de administrador' })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })  // 5 intentos por minuto por IP
   @Post('login')
   login(@Body() dto: AdminLoginRequestDto): Promise<TokenResponseDto> {
     return this.adminAuthService.login(dto);
