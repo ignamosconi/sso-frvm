@@ -3,13 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import { IOAuthClientService } from './oauth-client.service.interface.js';
 import { OAuthClientEntity } from '../entities/oauth-client.entity.js';
 import { CreateOAuthClientDto } from '../dtos/create-oauth-client.dto.js';
 import { UpdateOAuthClientDto } from '../dtos/update-oauth-client.dto.js';
 import { OAuthClientResponseDto } from '../dtos/oauth-client-response.dto.js';
+import { OAuthClientCreatedResponseDto } from '../dtos/oauth-client-created-response.dto.js';
 import { OAuthClientInfoDto } from '../dtos/oauth-client-info.dto.js';
+
+const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class OAuthClientService implements IOAuthClientService {
@@ -31,14 +35,38 @@ export class OAuthClientService implements IOAuthClientService {
     });
   }
 
+  // Mapea entidad a DTO de respuesta general (sin secret)
+  private toResponseDto(entity: OAuthClientEntity): OAuthClientResponseDto {
+    return {
+      id: entity.id,
+      clientName: entity.clientName,
+      redirectUris: entity.redirectUris,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    };
+  }
+
+  // Mapea entidad + plain secret al DTO de creación/regeneración
+  private toCreatedResponseDto(entity: OAuthClientEntity, plainSecret: string): OAuthClientCreatedResponseDto {
+    return {
+      id: entity.id,
+      clientName: entity.clientName,
+      redirectUris: entity.redirectUris,
+      plainSecret,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    };
+  }
+
   async findAll(): Promise<OAuthClientResponseDto[]> {
-    return this.clientRepository.find();
+    const entities = await this.clientRepository.find();
+    return entities.map(e => this.toResponseDto(e));
   }
 
   async findOne(id: number): Promise<OAuthClientResponseDto> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
-    return client;
+    return this.toResponseDto(client);
   }
 
   async findInfo(id: number): Promise<OAuthClientInfoDto> {
@@ -50,22 +78,27 @@ export class OAuthClientService implements IOAuthClientService {
   async validateClient(id: number, secret: string, redirectUri: string): Promise<boolean> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) return false;
-    if (client.clientSecret !== secret) return false;
+    // Comparación con tiempo constante via bcrypt
+    const secretValid = await bcrypt.compare(secret, client.clientSecret);
+    if (!secretValid) return false;
     if (!client.redirectUris.includes(redirectUri)) return false;
     return true;
   }
 
-  async create(dto: CreateOAuthClientDto): Promise<OAuthClientResponseDto> {
-    const clientSecret = randomBytes(32).toString('hex');
+  async create(dto: CreateOAuthClientDto): Promise<OAuthClientCreatedResponseDto> {
+    const plainSecret = randomBytes(32).toString('hex');
+    const clientSecret = await bcrypt.hash(plainSecret, BCRYPT_ROUNDS);
     const entity = this.clientRepository.create({ ...dto, clientSecret });
-    return this.clientRepository.save(entity);
+    const saved = await this.clientRepository.save(entity);
+    return this.toCreatedResponseDto(saved, plainSecret);
   }
 
   async update(id: number, dto: UpdateOAuthClientDto): Promise<OAuthClientResponseDto> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
     Object.assign(client, dto);
-    return this.clientRepository.save(client);
+    const saved = await this.clientRepository.save(client);
+    return this.toResponseDto(saved);
   }
 
   async remove(id: number): Promise<void> {
@@ -74,11 +107,13 @@ export class OAuthClientService implements IOAuthClientService {
     await this.clientRepository.remove(client);
   }
 
-  async regenerateSecret(id: number): Promise<OAuthClientResponseDto> {
+  async regenerateSecret(id: number): Promise<OAuthClientCreatedResponseDto> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
-    client.clientSecret = randomBytes(32).toString('hex');
-    return this.clientRepository.save(client);
+    const plainSecret = randomBytes(32).toString('hex');
+    client.clientSecret = await bcrypt.hash(plainSecret, BCRYPT_ROUNDS);
+    const saved = await this.clientRepository.save(client);
+    return this.toCreatedResponseDto(saved, plainSecret);
   }
 
   async sendCredentialsByEmail(id: number, to: string): Promise<void> {
@@ -100,10 +135,13 @@ export class OAuthClientService implements IOAuthClientService {
           '── Datos de tu cliente OAuth ──────────────────────────',
           `Client ID:     ${client.id}`,
           `Client Name:   ${client.clientName}`,
-          `Client Secret: ${client.clientSecret}`,
           '',
           'Redirect URIs registradas:',
           urisList,
+          '',
+          '► El Client Secret no se incluye en este email por seguridad.',
+          'Podés verlo en el panel de administración inmediatamente después de',
+          'crearlo o regenerarlo. Si lo perdiste, pedile al administrador que lo regenere.',
           '',
           '── Cómo integrar tu app con el SSO ────────────────────',
           '',
@@ -122,7 +160,7 @@ export class OAuthClientService implements IOAuthClientService {
           `   POST ${ssoUrl}/sso/token`,
           '   {',
           `     "client_id": "${client.id}",`,
-          `     "client_secret": "TU_CLIENT_SECRET",`,
+          '     "client_secret": "TU_CLIENT_SECRET",',
           '     "code": "EL_CODE_RECIBIDO",',
           '     "redirect_uri": "TU_REDIRECT_URI"',
           '   }',
