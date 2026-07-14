@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import { IOAuthClientService } from './oauth-client.service.interface.js';
+import type { ICredentialTokenService } from '../../credential-token/services/credential-token.service.interface.js';
+import { GenerateCredentialTokenDto } from '../../credential-token/dtos/generate-credential-token.dto.js';
 import { OAuthClientEntity } from '../entities/oauth-client.entity.js';
 import { CreateOAuthClientDto } from '../dtos/create-oauth-client.dto.js';
 import { UpdateOAuthClientDto } from '../dtos/update-oauth-client.dto.js';
@@ -23,6 +25,8 @@ export class OAuthClientService implements IOAuthClientService {
     @InjectRepository(OAuthClientEntity)
     private readonly clientRepository: Repository<OAuthClientEntity>,
     private readonly configService: ConfigService,
+    @Inject('ICredentialTokenService')
+    private readonly credentialTokenService: ICredentialTokenService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.getOrThrow<string>('MAIL_HOST'),
@@ -116,12 +120,32 @@ export class OAuthClientService implements IOAuthClientService {
     return this.toCreatedResponseDto(saved, plainSecret);
   }
 
-  async sendCredentialsByEmail(id: number, to: string): Promise<void> {
+  async sendCredentialsByEmail(id: number, to: string, plainSecret: string): Promise<void> {
+    const credentialTokenTtlMs = this.configService.getOrThrow<number>('CREDENTIAL_TOKEN_TTL_MS');
+    const credentialTokenTtlHours = credentialTokenTtlMs / (1000 * 60 * 60);
+
+    //Formateamos para que se vea hora y minuto
+    const credentialTokenTtlText = Number.isInteger(credentialTokenTtlHours)
+      ? `${credentialTokenTtlHours} hora${credentialTokenTtlHours === 1 ? '' : 's'}`
+      : `${credentialTokenTtlHours.toFixed(1)} horas`;
+
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
 
     const from = this.configService.getOrThrow<string>('MAIL_FROM');
     const ssoUrl = this.configService.getOrThrow<string>('SSO_BASE_URL');
+
+    // Generar link de un solo uso con el secret cifrado
+    const generateDto = new GenerateCredentialTokenDto();
+    Object.assign(generateDto, {
+      oauthClientId: client.id,
+      plainSecret,
+      clientName: client.clientName,
+      redirectUris: client.redirectUris,
+    });
+    const token = await this.credentialTokenService.generate(generateDto);
+    const credentialsUrl = `${ssoUrl}/credentials/${token}`;
+
     const urisList = client.redirectUris.map(uri => `  • ${uri}`).join('\n');
 
     try {
@@ -132,16 +156,19 @@ export class OAuthClientService implements IOAuthClientService {
         text: [
           `Credenciales de integración SSO FRVM para: ${client.clientName}`,
           '',
-          '── Datos de tu cliente OAuth ──────────────────────────',
-          `Client ID:     ${client.id}`,
-          `Client Name:   ${client.clientName}`,
+          '── Tu link de credenciales ─────────────────────────────',
+          '',
+          `${credentialsUrl}`,
+          '',
+          `⚠️  Este link es de UN SOLO USO y expira en ${credentialTokenTtlText}.`,
+          'Abrilo, guardá el Client Secret en un lugar seguro y no lo compartas.',
+          '',
+          '── Datos conocidos de tu cliente OAuth ─────────────────',
+          `Client ID:   ${client.id}`,
+          `Client Name: ${client.clientName}`,
           '',
           'Redirect URIs registradas:',
           urisList,
-          '',
-          '► El Client Secret no se incluye en este email por seguridad.',
-          'Podés verlo en el panel de administración inmediatamente después de',
-          'crearlo o regenerarlo. Si lo perdiste, pedile al administrador que lo regenere.',
           '',
           '── Cómo integrar tu app con el SSO ────────────────────',
           '',
