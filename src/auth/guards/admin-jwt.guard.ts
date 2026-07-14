@@ -21,9 +21,12 @@ export class AdminJwtGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = await this.jwtService.verifyAsync<{ sub: string; username: string }>(token, {
+      const payload = await this.jwtService.verifyAsync<{ sub: string; username: string; type: string }>(token, {
         secret: this.configService.getOrThrow<string>('JWT_ADMIN_ACCESS_SECRET'),
       });
+      if (payload.type !== 'access') {
+        throw new UnauthorizedException('Token de admin inválido o expirado.');
+      }
       (request as ExpressRequest & { admin: typeof payload }).admin = payload;
     } catch {
       throw new UnauthorizedException('Token de admin inválido o expirado.');
