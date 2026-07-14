@@ -11,6 +11,14 @@ export class AdminEntity {
   @Column()
   password!: string;
 
+  // Secret TOTP cifrado con AES-256-GCM (mismo mecanismo que credential tokens)
+  // null = nunca configuró 2FA
+  @Column({ nullable: true, type: 'varchar' })
+  totpSecret!: string | null;
+
+  @Column({ default: false })
+  totpEnabled!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
