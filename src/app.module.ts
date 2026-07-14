@@ -13,6 +13,7 @@ import { OAuthClientModule } from './oauth-client/oauth-client.module.js';
 import { CodeModule } from './code/code.module.js';
 import { AdminEntity } from './admin/entities/admin.entity.js';
 import { OAuthClientEntity } from './oauth-client/entities/oauth-client.entity.js';
+import { RefreshTokenEntity } from './refresh-token/entities/refresh-token.entity.js';
 import { AdminSeeder } from './database/seeders/admin.seeder.js';
 
 @Module({
@@ -34,7 +35,11 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
         username: configService.getOrThrow<string>('DB_USERNAME'),
         password: configService.getOrThrow<string>('DB_PASSWORD'),
         database: configService.getOrThrow<string>('DB_NAME'),
-        entities: [AdminEntity, OAuthClientEntity],
+        entities: [
+          AdminEntity, 
+          OAuthClientEntity,
+          RefreshTokenEntity,
+        ],
         synchronize: false,
         migrations: [join(__dirname, 'database', 'migrations', '*.js')],
         migrationsRun: true,

@@ -8,6 +8,7 @@ import { JwtGuard } from './guards/jwt.guard.js';
 import { AdminJwtGuard } from './guards/admin-jwt.guard.js';
 import { CodeModule } from '../code/code.module.js';
 import { OAuthClientModule } from '../oauth-client/oauth-client.module.js';
+import { RefreshTokenModule } from '../refresh-token/refresh-token.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { OAuthClientModule } from '../oauth-client/oauth-client.module.js';
     JwtModule.register({}),
     CodeModule,
     OAuthClientModule,
+    RefreshTokenModule,
   ],
   controllers: [AuthController],
   providers: [

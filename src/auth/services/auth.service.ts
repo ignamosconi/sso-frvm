@@ -6,15 +6,18 @@ import { firstValueFrom } from 'rxjs';
 import { IAuthService } from './auth.service.interface.js';
 import type { ICodeService } from '../../code/services/code.service.interface.js';
 import type { IOAuthClientService } from '../../oauth-client/services/oauth-client.service.interface.js';
+import type { IRefreshTokenService } from '../../refresh-token/services/refresh-token.service.interface.js';
 import { LoginRequestDto } from '../dtos/login-request.dto.js';
 import { AuthorizationCodeRequestDto } from '../dtos/authorization-code-request.dto.js';
 import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
+import { LogoutRequestDto } from '../dtos/logout-request.dto.js';
 import { CodeResponseDto } from '../dtos/code-response.dto.js';
 import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
 import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto.js';
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
+
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -32,6 +35,8 @@ export class AuthService implements IAuthService {
     private readonly codeService: ICodeService,
     @Inject('IOAuthClientService')
     private readonly oauthClientService: IOAuthClientService,
+    @Inject('IRefreshTokenService')
+    private readonly refreshTokenService: IRefreshTokenService,
   ) {
     this.baseUrl = this.configService.getOrThrow<string>('AUTOGESTION_BASE_URL');
     this.accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
@@ -125,6 +130,14 @@ export class AuthService implements IAuthService {
       ),
     ]);
 
+    // Guardar refresh token en DB (inicio de nueva familia)
+    await this.refreshTokenService.save({
+      token: refresh_token,
+      sub: entry.userInfo.sub,
+      type: 'student',
+      expiresIn: this.refreshExpiresIn,
+    });
+
     return {
       access_token,
       refresh_token,
@@ -134,6 +147,7 @@ export class AuthService implements IAuthService {
   }
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
+    // Verificar firma JWT primero
     let storedPayload: JwtPayloadDto;
     try {
       storedPayload = await this.jwtService.verifyAsync<JwtPayloadDto>(
@@ -148,19 +162,41 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('El token proporcionado no es un refresh token.');
     }
 
+    // Consumir en DB (detecta reutilización y revoca familia si es necesario)
+    const record = await this.refreshTokenService.consume(refreshRequestDto.refresh_token);
+
     const { type: _, iat: __, exp: ___, ...userInfo } = storedPayload;
 
-    const newAccessToken = await this.jwtService.signAsync(
-      { ...userInfo, type: 'access' },
-      { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
-    );
+    const [newAccessToken, newRefreshToken] = await Promise.all([
+      this.jwtService.signAsync(
+        { ...userInfo, type: 'access' },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+      ),
+      this.jwtService.signAsync(
+        { ...userInfo, type: 'refresh' },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+      ),
+    ]);
+
+    // Guardar nuevo refresh token en la misma familia
+    await this.refreshTokenService.save({
+      token: newRefreshToken,
+      sub: record.sub,
+      type: 'student',
+      expiresIn: this.refreshExpiresIn,
+      familyId: record.familyId,
+    });
 
     return {
       access_token: newAccessToken,
-      refresh_token: refreshRequestDto.refresh_token,
+      refresh_token: newRefreshToken,
       token_type: 'Bearer',
       expires_in: this.parseExpiresIn(this.accessExpiresIn),
     };
+  }
+
+  async logout(dto: LogoutRequestDto): Promise<void> {
+    await this.refreshTokenService.revokeFamily(dto.refresh_token);
   }
 
   private parseExpiresIn(value: string): number {

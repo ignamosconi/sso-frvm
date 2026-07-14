@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Inject } from '@nestjs/common';
+import { Controller, Post, Body, Inject, HttpCode } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { IAdminAuthController } from './admin-auth.controller.interface.js';
 import type { IAdminAuthService } from '../services/admin-auth.service.interface.js';
 import { AdminLoginRequestDto } from '../dtos/admin-login-request.dto.js';
 import { AdminRefreshRequestDto } from '../dtos/admin-refresh-request.dto.js';
+import { AdminLogoutRequestDto } from '../dtos/admin-logout-request.dto.js';
 import { TokenResponseDto } from '../../auth/dtos/token-response.dto.js';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
@@ -31,5 +32,13 @@ export class AdminAuthController implements IAdminAuthController {
   @Post('refresh')
   refresh(@Body() dto: AdminRefreshRequestDto): Promise<TokenResponseDto> {
     return this.adminAuthService.refresh(dto);
+  }
+
+  @ApiOperation({ summary: 'Cerrar sesión de administrador' })
+  @ApiResponse({ status: 204, description: 'Sesión cerrada correctamente' })
+  @HttpCode(204)
+  @Post('logout')
+  logout(@Body() dto: AdminLogoutRequestDto): Promise<void> {
+    return this.adminAuthService.logout(dto);
   }
 }

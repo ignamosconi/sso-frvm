@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Res, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, Inject, UseGuards, HttpCode } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { join } from 'path';
@@ -7,6 +7,7 @@ import type { IAuthService } from '../services/auth.service.interface.js';
 import { LoginRequestDto } from '../dtos/login-request.dto.js';
 import { AuthorizationCodeRequestDto } from '../dtos/authorization-code-request.dto.js';
 import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
+import { LogoutRequestDto } from '../dtos/logout-request.dto.js';
 import { CodeResponseDto } from '../dtos/code-response.dto.js';
 import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
@@ -64,6 +65,17 @@ export class AuthController implements IAuthController {
   @Post('refresh')
   async refresh(@Body() refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
     return this.authService.refreshTokens(refreshRequestDto);
+  }
+
+  @ApiOperation({
+    summary: 'Cerrar sesión de alumno',
+    description: 'Revoca el refresh token y toda su familia. El access token expira naturalmente (máx. 15m).',
+  })
+  @ApiResponse({ status: 204, description: 'Sesión cerrada correctamente' })
+  @HttpCode(204)
+  @Post('logout')
+  async logout(@Body() dto: LogoutRequestDto): Promise<void> {
+    return this.authService.logout(dto);
   }
 
   @ApiOperation({
