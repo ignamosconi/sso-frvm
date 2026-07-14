@@ -14,6 +14,13 @@ export class AdminSeeder {
   ) {}
 
   async seed(): Promise<void> {
+    const env = this.configService.get<string>('NODE_ENV') ?? 'development';
+
+    if (env === 'production') {
+      console.log('[Seeder] Entorno production detectado — seeder deshabilitado.');
+      return;
+    }
+
     const username = this.configService.getOrThrow<string>('ADMIN_USERNAME_SEEDER');
     const password = this.configService.getOrThrow<string>('ADMIN_PASSWORD_SEEDER');
 
