@@ -52,7 +52,10 @@ export class AuthService implements IAuthService {
         this.httpService.post<AutogestionLoginResponseDto>(
           `${this.baseUrl}/login`,
           {},
-          { headers: { nick: loginDto.legajo, password: loginDto.password } },
+          {
+            headers: { nick: loginDto.legajo, password: loginDto.password },
+            timeout: 8000,
+          },
         ),
       );
       loginData = loginResponse.data;
@@ -72,6 +75,7 @@ export class AuthService implements IAuthService {
       const userResponse = await firstValueFrom(
         this.httpService.get<AutogestionUserResponseDto>(`${this.baseUrl}/usuarios`, {
           headers: { Authorization: `Basic ${base64Credentials}` },
+          timeout: 8000,
         }),
       );
       userData = userResponse.data;
