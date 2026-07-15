@@ -12,5 +12,6 @@ export interface IRefreshTokenService {
   save(params: SaveRefreshTokenParams): Promise<void>;
   consume(token: string): Promise<RefreshTokenEntity>;
   revokeFamily(token: string): Promise<void>;
+  revokeAllForSub(sub: string): Promise<void>;
   purgeExpired(): Promise<void>;
 }

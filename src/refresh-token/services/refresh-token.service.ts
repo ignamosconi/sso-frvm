@@ -100,6 +100,13 @@ export class RefreshTokenService implements IRefreshTokenService{
     await this.repo.update({ familyId: record.familyId }, { revoked: true });
   }
 
+  async revokeAllForSub(sub: string): Promise<void> {
+    await this.repo.update(
+      { sub, revoked: false },
+      { revoked: true },
+    );
+  }
+
   // Limpieza periódica de tokens viejos (llamar desde un cron si se quiere)
   async purgeExpired(): Promise<void> {
     await this.repo
