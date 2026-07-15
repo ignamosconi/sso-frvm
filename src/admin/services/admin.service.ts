@@ -68,8 +68,9 @@ export class AdminService implements IAdminService {
     //NOTA: el access token vigente puede seguir siendo válido hasta su vencimiento (JWT_ADMIN_ACCESS_EXPIRES_IN, por defecto 15 minutos).
     //Se asume este riesgo como aceptable dado el contexto de uso interno del SSO, y para evitar mantener una blacklist de JWT
     //o consultar el estado del usuario en cada request. Justamente, para eso se separa en access y refresh, el access es stateless.
-    await this.refreshTokenService.revokeAllForSub(id);
-
-    await this.adminRepository.remove(admin);
+    await this.adminRepository.manager.transaction(async (manager) => {
+      await this.refreshTokenService.revokeAllForSub(id, manager);
+      await manager.remove(admin);
+    });
   }
 }

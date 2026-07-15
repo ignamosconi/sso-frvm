@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { RefreshTokenEntity } from '../entities/refresh-token.entity.js';
@@ -100,11 +100,11 @@ export class RefreshTokenService implements IRefreshTokenService{
     await this.repo.update({ familyId: record.familyId }, { revoked: true });
   }
 
-  async revokeAllForSub(sub: string): Promise<void> {
-    await this.repo.update(
-      { sub, revoked: false },
-      { revoked: true },
-    );
+  async revokeAllForSub(sub: string, manager?: EntityManager): Promise<void> {
+    const repo = manager
+      ? manager.getRepository(RefreshTokenEntity)
+      : this.repo;
+    await repo.update({ sub, revoked: false }, { revoked: true });
   }
 
   // Limpieza periódica de tokens viejos (llamar desde un cron si se quiere)
