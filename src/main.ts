@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import basicAuth = require('express-basic-auth');
@@ -46,6 +47,32 @@ function assertSecrets(configService: ConfigService): void {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet({
+    //Evita que el popup de login y la página de credenciales sean embebidos en iframes de otros orígenes (clickjacking)
+    frameguard: { action: 'deny' },
+    // Fuerza HTTPS en producción indicándole al browser que recuerde conectarse solo por HTTPS por 1 año
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    },
+    //Evita que el browser infiera el tipo de contenido
+    noSniff: true,
+    //Desactiva el header X-Powered-By (no revelar que usamos Express)
+    hidePoweredBy: true,
+    //CSP básica: solo recursos propios + Google Fonts (usados en login y credentials)
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:'],
+        scriptSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  }));
 
   app.enableCors({
     origin: process.env.ADMIN_PANEL_URL ?? 'http://localhost:5173',
