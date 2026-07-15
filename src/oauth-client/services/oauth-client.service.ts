@@ -45,6 +45,7 @@ export class OAuthClientService implements IOAuthClientService {
       id: entity.id,
       clientName: entity.clientName,
       redirectUris: entity.redirectUris,
+      isActive: entity.isActive,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };
@@ -82,7 +83,7 @@ export class OAuthClientService implements IOAuthClientService {
   async validateClient(id: number, secret: string, redirectUri: string): Promise<boolean> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) return false;
-    // Comparación con tiempo constante via bcrypt
+    if (!client.isActive) return false;
     const secretValid = await bcrypt.compare(secret, client.clientSecret);
     if (!secretValid) return false;
     if (!client.redirectUris.includes(redirectUri)) return false;
@@ -210,5 +211,21 @@ export class OAuthClientService implements IOAuthClientService {
     } catch {
       throw new BadRequestException('Error al enviar el correo. Verificá la configuración de email.');
     }
+  }
+
+  async suspend(id: number): Promise<OAuthClientResponseDto> {
+    const client = await this.clientRepository.findOne({ where: { id } });
+    if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
+    client.isActive = false;
+    const saved = await this.clientRepository.save(client);
+    return this.toResponseDto(saved);
+  }
+
+  async activate(id: number): Promise<OAuthClientResponseDto> {
+    const client = await this.clientRepository.findOne({ where: { id } });
+    if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
+    client.isActive = true;
+    const saved = await this.clientRepository.save(client);
+    return this.toResponseDto(saved);
   }
 }

@@ -100,12 +100,13 @@ export class AuthService implements IAuthService {
 
     const client = await this.oauthClientService.findOne(clientId).catch(() => null);
     if (!client) throw new UnauthorizedException('client_id inválido.');
+    if (!client.isActive) throw new UnauthorizedException('La aplicación está suspendida.');
     if (!client.redirectUris.includes(loginDto.redirect_uri)) {
       throw new UnauthorizedException('redirect_uri no coincide con las registradas.');
     }
 
     const userInfo = await this.validateAndGetUserInfo(loginDto);
-    const code = this.codeService.generate(userInfo, clientId); // <- pasa userInfo completo
+    const code = this.codeService.generate(userInfo, clientId);
     return { code, state: loginDto.state };
   }
 

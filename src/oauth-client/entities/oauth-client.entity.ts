@@ -14,6 +14,9 @@ export class OAuthClientEntity {
   @Column({ unique: true })
   clientSecret!: string;
 
+  @Column({ default: true })
+  isActive!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
