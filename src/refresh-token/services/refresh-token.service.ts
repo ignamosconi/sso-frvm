@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { RefreshTokenEntity } from '../entities/refresh-token.entity.js';
 import { IRefreshTokenService } from './refresh-token.service.interface.js';
 
@@ -41,7 +41,7 @@ export class RefreshTokenService implements IRefreshTokenService{
   }): Promise<void> {
     await this.repo.save({
       tokenHash: this.hash(params.token),
-      familyId: params.familyId ?? uuidv4(),
+      familyId: params.familyId ?? randomUUID(),
       sub: params.sub,
       type: params.type,
       expiresAt: this.toDate(params.expiresIn),
