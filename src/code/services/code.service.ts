@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { ICodeService } from './code.service.interface.js';
 import { UserInfoOauthDto } from '../../auth/dtos/user-info-oauth.dto.js';
 
@@ -27,7 +27,7 @@ export class CodeService implements ICodeService, OnModuleDestroy {
   }
 
   generate(userInfo: UserInfoOauthDto, clientId: number): string {
-    const code = uuidv4();
+    const code = randomUUID();
     this.codes.set(code, { userInfo, clientId, expiresAt: Date.now() + this.ttlMs });
     return code;
   }
