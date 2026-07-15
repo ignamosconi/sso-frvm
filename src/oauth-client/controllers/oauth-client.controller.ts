@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Inject, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IOAuthClientController } from './oauth-client.controller.interface.js';
 import type { IOAuthClientService } from '../services/oauth-client.service.interface.js';
@@ -102,5 +102,25 @@ export class OAuthClientController implements IOAuthClientController {
     @Body() dto: SendCredentialsEmailDto,
   ): Promise<void> {
     return this.oauthClientService.sendCredentialsByEmail(id, dto.to, dto.plainSecret);
+  }
+
+  @ApiOperation({ summary: 'Suspender cliente OAuth', description: 'El cliente no podrá autenticar usuarios hasta que sea reactivado.' })
+  @ApiResponse({ status: 200, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Patch(':id/suspend')
+  suspend(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.suspend(id);
+  }
+
+  @ApiOperation({ summary: 'Activar cliente OAuth suspendido' })
+  @ApiResponse({ status: 200, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Patch(':id/activate')
+  activate(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.activate(id);
   }
 }
