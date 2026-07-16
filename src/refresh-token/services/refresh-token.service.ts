@@ -76,7 +76,7 @@ export class RefreshTokenService implements IRefreshTokenService{
         throw new UnauthorizedException('Refresh token ya utilizado. Sesión revocada por seguridad.');
       }
 
-      // No existe, revocado, o expirado — mismo mensaje hacia el cliente
+      // No existe, revocado, o expirado  mismo mensaje hacia el cliente
       throw new UnauthorizedException('Refresh token inválido o revocado.');
     }
 

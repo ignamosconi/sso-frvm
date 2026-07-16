@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Body, Res, Inject, UseGuards, HttpCode } from '@nestjs/common';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { join } from 'path';
 import { IAuthController } from './auth.controller.interface.js';

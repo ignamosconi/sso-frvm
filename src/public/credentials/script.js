@@ -62,7 +62,7 @@ function renderSuccess(data) {
     <hr>
 
     ${buildFieldHtml('Client ID', String(data.id))}
-    ${buildFieldHtml('Client Name', data.clientName, false)}
+    ${buildFieldHtml('Client Name', data.clientName, true)}
     ${buildFieldHtml('Client Secret', data.plainSecret)}
     ${buildUriListHtml(data.redirectUris)}
   `;
