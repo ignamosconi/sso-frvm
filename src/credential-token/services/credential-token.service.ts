@@ -23,7 +23,10 @@ export class CredentialTokenService implements ICredentialTokenService {
       throw new Error('CREDENTIAL_ENCRYPTION_KEY debe ser exactamente 64 caracteres hex (32 bytes).');
     }
     this.encryptionKey = Buffer.from(keyHex, 'hex');
-    this.ttlMs = this.configService.get<number>('CREDENTIAL_TOKEN_TTL_MS') ?? 86400000;
+    this.ttlMs = parseInt(
+      this.configService.get<string>('CREDENTIAL_TOKEN_TTL_MS') ?? '86400000',
+      10,
+    );
   }
 
   private hashToken(token: string): string {
