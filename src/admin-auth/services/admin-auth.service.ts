@@ -205,10 +205,12 @@ export class AdminAuthService implements IAdminAuthService {
     const valid = await bcrypt.compare(dto.password, admin.password);
     if (!valid) throw new UnauthorizedException('Password incorrecta.');
 
-    // Invalidar el secret TOTP en el servidor.
-    // El secret anterior puede seguir existiendo en el dispositivo del admin,
-    // pero el servidor ya no lo conoce — cualquier código generado con él
-    // va a fallar la verificación. El próximo login va a requerir setup 2FA de nuevo.
+    // El secret TOTP queda invalidado en el servidor. El secret anterior puede
+    // seguir en el dispositivo del admin, pero el servidor ya no lo conoce.
+    // La sesión activa (access + refresh tokens) no se revoca intencionalmente:
+    // el admin que llama a este endpoint ya completó los dos factores para obtener
+    // su access token, por lo que su sesión es legítima y no debe interrumpirse.
+    // El access token vigente expira solo (máx. JWT_ADMIN_ACCESS_EXPIRES_IN).
     admin.totpSecret = null;
     admin.totpEnabled = false;
     await this.adminRepository.save(admin);
