@@ -19,6 +19,7 @@ import { AdminRefreshRequestDto } from '../dtos/admin-refresh-request.dto.js';
 import { AdminLogoutRequestDto } from '../dtos/admin-logout-request.dto.js';
 import { TokenResponseDto } from '../../auth/dtos/token-response.dto.js';
 import type { IRefreshTokenService } from '../../refresh-token/services/refresh-token.service.interface.js';
+import { Admin2faResetDto } from '../dtos/admin-2fa-reset.dto.js';
 
 @Injectable()
 export class AdminAuthService implements IAdminAuthService {
@@ -194,6 +195,23 @@ export class AdminAuthService implements IAdminAuthService {
     if (!isValid) throw new UnauthorizedException('Código 2FA inválido.');
 
     return this.issueTokenPair(admin);
+  }
+
+    async reset2fa(adminId: string, dto: Admin2faResetDto): Promise<void> {
+    const admin = await this.adminRepository.findOne({ where: { id: adminId } });
+    if (!admin) throw new UnauthorizedException('Admin no encontrado.');
+
+    // Re-autenticar con password antes de permitir el reset
+    const valid = await bcrypt.compare(dto.password, admin.password);
+    if (!valid) throw new UnauthorizedException('Password incorrecta.');
+
+    // Invalidar el secret TOTP en el servidor.
+    // El secret anterior puede seguir existiendo en el dispositivo del admin,
+    // pero el servidor ya no lo conoce — cualquier código generado con él
+    // va a fallar la verificación. El próximo login va a requerir setup 2FA de nuevo.
+    admin.totpSecret = null;
+    admin.totpEnabled = false;
+    await this.adminRepository.save(admin);
   }
 
   async refresh(dto: AdminRefreshRequestDto): Promise<TokenResponseDto> {

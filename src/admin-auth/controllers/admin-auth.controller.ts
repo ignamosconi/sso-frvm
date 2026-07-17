@@ -1,4 +1,7 @@
-import { Controller, Post, Body, Inject, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Inject, HttpCode, UseGuards, Request } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
+import { Admin2faResetDto } from '../dtos/admin-2fa-reset.dto.js';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IAdminAuthController } from './admin-auth.controller.interface.js';
@@ -65,6 +68,20 @@ export class AdminAuthController implements IAdminAuthController {
   @Post('2fa/validate')
   validate2fa(@Body() dto: Admin2faValidateDto): Promise<TokenResponseDto> {
     return this.adminAuthService.validate2fa(dto);
+  }
+
+  @ApiOperation({
+    summary: 'Resetear 2FA',
+    description: 'Invalida el secret TOTP actual del admin. El próximo login requerirá configurar 2FA de nuevo. Requiere confirmar la password actual.',
+  })
+  @ApiResponse({ status: 204, description: '2FA reseteado correctamente' })
+  @ApiResponse({ status: 401, description: 'Password incorrecta o token inválido' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @HttpCode(204)
+  @Post('2fa/reset')
+  reset2fa(@Request() req: any, @Body() dto: Admin2faResetDto): Promise<void> {
+    return this.adminAuthService.reset2fa(req.admin.sub, dto);
   }
 
   @ApiOperation({ summary: 'Renovar access token de administrador' })
