@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumberString, IsUrl, MaxLength } from 'class-validator';
+import { IsString, IsNumberString, IsUrl } from 'class-validator';
 
 export class LoginRequestDto {
   @ApiProperty({ example: '1', description: 'ID del cliente OAuth registrado' })
@@ -20,6 +20,5 @@ export class LoginRequestDto {
 
   @ApiProperty({ example: 'mi_contraseña_segura123!' })
   @IsString()
-  @MaxLength(128)
   password!: string;
 }

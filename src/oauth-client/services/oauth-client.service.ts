@@ -137,6 +137,15 @@ export class OAuthClientService implements IOAuthClientService {
     const ssoUrl = this.configService.getOrThrow<string>('SSO_BASE_URL');
 
     // Generar link de un solo uso con el secret cifrado
+
+    // LIMITACIÓN CONOCIDA: el plainSecret que llega acá no se valida contra la DB
+    // porque el backend nunca almacena el secret en texto plano (solo su hash bcrypt).
+    // Un admin podría pasar un plainSecret distinto al real, lo que haría que el
+    // destinatario reciba credenciales incorrectas y tenga que volver a solicitarlas.
+    // Como mucho un cliente tendría que pedir regenerar el secret, asique no hay impacto
+    // de seguridad (no se expone información sensible ni se otorga acceso indebido).
+    // Se asume este riesgo porque los administradores del sistema son personal de confianza
+    // de UTN FRVM, y el sistema es de uso interno.
     const generateDto = new GenerateCredentialTokenDto();
     Object.assign(generateDto, {
       oauthClientId: client.id,
