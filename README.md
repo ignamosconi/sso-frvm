@@ -1,117 +1,100 @@
-# SSO FRVM
+# SSO FRVM — Backend
 
-Servidor de autenticación OAuth 2.0 para la UTN FRVM.
+Sistema de autenticación único (SSO) para aplicaciones integradas con UTN FRVM. Permite que cualquier app registrada en el sistema pueda autenticar alumnos usando sus credenciales de Autogestión, sin que esas credenciales sean compartidas con la app integradora.
 
-## ¿Qué es este proyecto?
+## ¿Qué hace este repositorio?
 
-SSO FRVM es un sistema de inicio de sesión único que permite a los alumnos autenticarse en aplicaciones de terceros usando sus credenciales de autogestión institucional, sin compartirlas con nadie más que la facultad.
+Implementa un servidor OAuth 2.0 con flujo de authorization code que:
 
-La idea detrás del proyecto es incentivar a los alumnos a crear sus propias apps (torneos, foros, herramientas académicas, sistemas de reservas) que otros alumnos puedan usar, fomentando así la creación de un ecosistema digital propio de la FRVM. Cualquier desarrollador que quiera integrar el login institucional en su app puede hacerlo sin necesidad de manejar credenciales ni construir su propio sistema de autenticación.
+- Valida las credenciales de alumnos contra el endpoint público de Autogestión UTN FRVM.
+- Emite authorization codes de un solo uso (TTL configurable, por defecto 2 minutos).
+- Intercambia esos codes por access tokens y refresh tokens JWT.
+- Expone un endpoint `/sso/me` para que las apps integradoras identifiquen al alumno autenticado.
+- Provee un panel de administración (repositorio separado) para gestionar administradores del sistema y aplicaciones cliente registradas.
+- Implementa 2FA obligatorio (TOTP) para todos los administradores.
+- Usa links de un solo uso con cifrado AES-256-GCM para la entrega de client secrets.
 
-**Este repositorio es público** para que cualquier persona pueda auditar que las credenciales de autogestión no son almacenadas en ningún lado y que el flujo de autenticación funciona exactamente como se documenta aquí. 
 
-**La seguridad del sistema no depende del secreto del código, sino de que el servidor corre en el dominio oficial de la facultad y de que los secrets de producción viven únicamente en el servidor, nunca en el repositorio.**
+## Tecnologías utilizadas
 
-
-## Tecnologías
-
-- **NestJS** - framework de backend
-- **TypeORM** - ORM para PostgreSQL
-- **PostgreSQL** - base de datos (dockerizada)
-- **JWT** - tokens de acceso y refresco
-- **Nodemailer** - envío de credenciales por email
-- **Swagger** - documentación interactiva de la API
-- **Docker Compose** - gestión de la base de datos
+- **Runtime:** Node.js 22
+- **Framework:** NestJS 11
+- **Base de datos:** PostgreSQL con TypeORM (migraciones, sin `synchronize`)
+- **Autenticación:** JWT HS256 (access + refresh tokens con rotación), TOTP via `otplib`
+- **Validación:** class-validator + class-transformer con `ValidationPipe` global
+- **Seguridad:** Helmet, `@nestjs/throttler`, bcrypt (cost 12 para admins, 10 para client secrets), AES-256-GCM para secrets en reposo
+- **Email:** Nodemailer (SMTP)
+- **Documentación:** Swagger UI (protegido con Basic Auth)
+- **Tests:** Jest + ts-jest
+- **CI:** GitHub Actions
 
 ## ¿Cómo integro mi app con el SSO?
 
-Si sos alumno o desarrollador y querés que tu app permita iniciar sesión con las credenciales de autogestión de la FRVM, estos son los pasos que tenés que seguir. 
+### 1. Obtener credenciales
 
-Vas a usar el despliegue de la facultad: no tenés que levantar este repositorio.
+Para poder integrar tu app con el SSO necesitás un **Client ID** y un **Client Secret**. Estos los entrega el equipo de sistemas de UTN FRVM al registrar tu app.
 
-### 1. Registrar tu app
+Al registrar tu app vas a recibir un email con un link de un solo uso. Ese link expira en 24 horas y solo puede abrirse una vez. Al abrirlo vas a ver:
 
-Contactate con el área de sistemas de la FRVM para que un administrador registre tu app en el sistema. Vas a necesitar darle:
+- **Client ID** — número entero que identifica tu app.
+- **Client Secret** — string de 64 caracteres hexadecimales. Guardalo en un lugar seguro. Si lo perdés, el equipo de sistemas puede regenerarlo.
 
-- **Nombre de tu app**
-- **Redirect URI**: la URL de tu app a la que el SSO redirigirá tras el login. Podés registrar varias (por ejemplo, una de desarrollo -https://ejemplo.com.ar/callback- y una de producción -http://localhost:4000/callback-).
+> **Importante:** el Client Secret nunca debe estar en el frontend de tu app. Debe estar exclusivamente en tu backend.
 
-El administrador te va a enviar por email:
-- Tu `client_id` (número)
-- Tu `client_secret` (string de 256 bits)
 
 ### 2. Flujo de autenticación
 
-El flujo completo es el siguiente:
+El SSO usa el flujo **OAuth 2.0 Authorization Code**. El popup de login lo provee el SSO; vos solo tenés que abrirlo y escuchar el resultado.
 
-```
-Tu app                          SSO FRVM                    Autogestión UTN
-  │                                │                               │
-  │  1. Abre popup de login        │                               │
-  │ ──────────────────────────────►│                               │
-  │                                │                               │
-  │  2. Usuario ingresa            │                               │
-  │     legajo + contraseña        │                               │
-  │ ──────────────────────────────►│                               |
-  |                                |  3. Valida credenciales       │
-  │                                │ ─────────────────────────────►│
-  │                                │ ◄─────────────────────────────│
-  │                                │                               │
-  │  4. SSO envía "code"           │                               │
-  │     via postMessage            │                               │
-  │ ◄──────────────────────────────│                               │
-  │                                │                               │
-  │  5. Tu backend canjea          │                               │
-  │     "code" por "tokens"        │                               │
-  │ ──────────────────────────────►│                               │
-  │ ◄──────────────────────────────│                               │
-  │                                │                               │
-  │  6. Usás el access token       │                               │
-  │     para identificar           │                               │
-  │     al usuario o el refresh    |                               | 
-  |     token para renovar el      |                               |
-  |     access. Si se vence el     |                               |
-  |     refresh, tenés que pedir   |                               |
-  |     otro code (vuelta a paso 1)|                               |
-```
+#### Paso 1 — Abrir el popup de login
 
-### 3. Implementación paso a paso
-
-**Paso 1 - Abrí el popup de login**
+Desde tu frontend, abrí un popup apuntando al login del SSO:
 
 ```javascript
-const state = crypto.randomUUID(); // guardalo en sesión para verificarlo después. Evita ataques CSRF.
-sessionStorage.setItem('sso_state', state);
+const state = crypto.randomUUID(); // valor aleatorio para prevenir CSRF
+sessionStorage.setItem('oauth_state', state);
 
-window.open(
-  `https://sso.frvm.utn.edu.ar/sso/login?client_id=TU_CLIENT_ID&redirect_uri=TU_REDIRECT_URI&state=${state}`,
-  'sso-login',
-  'width=500,height=375'      //Dimensiones recomendadas
+const popup = window.open(
+  `https://sso.frvm.utn.edu.ar/sso/login` +
+  `?client_id=${CLIENT_ID}` +
+  `&redirect_uri=${encodeURIComponent('https://tu-app.com/callback')}` +
+  `&state=${state}`,
+  'sso_login',
+  'width=480,height=600'
 );
 ```
 
-**Paso 2 - Escuchá el postMessage**
+#### Paso 2 — Escuchar el resultado
+
+El popup envía el authorization code vía `postMessage`. Verificá siempre el origen y el state antes de procesarlo:
 
 ```javascript
-window.addEventListener('message', async (event) => {
+window.addEventListener('message', (event) => {
+  // Verificar que el mensaje viene del SSO
   if (event.origin !== 'https://sso.frvm.utn.edu.ar') return;
 
   const { code, state } = event.data;
 
-  // Verificá que el state coincida con el que generaste
-  if (state !== sessionStorage.getItem('sso_state')) return;
+  // Verificar que el state coincide con el que generamos
+  if (state !== sessionStorage.getItem('oauth_state')) {
+    console.error('State inválido — posible ataque CSRF');
+    return;
+  }
 
-  // Mandá el code a tu backend para canjearlo
-  await fetch('/auth/callback', {
+  sessionStorage.removeItem('oauth_state');
+
+  // Enviar el code a tu backend para canjear por tokens
+  fetch('/tu-backend/auth/callback', {
     method: 'POST',
     body: JSON.stringify({ code }),
+    headers: { 'Content-Type': 'application/json' },
   });
 });
 ```
 
-**Paso 3 - Tu backend canjea el code por tokens**
+#### Paso 3 — Canjear el code por tokens (desde tu backend)
 
-Este paso debe hacerse desde tu backend, nunca desde el frontend, porque usa el `client_secret`.
+El code es de un solo uso y expira en 2 minutos. Canjealo inmediatamente desde tu backend:
 
 ```http
 POST https://sso.frvm.utn.edu.ar/sso/token
@@ -121,7 +104,7 @@ Content-Type: application/json
   "client_id": "TU_CLIENT_ID",
   "client_secret": "TU_CLIENT_SECRET",
   "code": "EL_CODE_RECIBIDO",
-  "redirect_uri": "TU_REDIRECT_URI"
+  "redirect_uri": "https://tu-app.com/callback"
 }
 ```
 
@@ -136,7 +119,11 @@ Respuesta:
 }
 ```
 
-**Paso 4 - Identificá al usuario**
+Guardá ambos tokens en tu backend. **Nunca los expongas al frontend.**
+
+#### Paso 4 — Identificar al alumno autenticado
+
+Con el access token podés obtener los datos del alumno:
 
 ```http
 GET https://sso.frvm.utn.edu.ar/sso/me
@@ -152,14 +139,16 @@ Respuesta:
   "apellido": "Mosconi",
   "legajo": "13692",
   "carrera": "Ingeniería en Sistemas de Información",
-  "email": "alumno@frvm.utn.edu.ar",
+  "email": "alumno@gmail.com",
   "grupo": "Alumno"
 }
 ```
 
-**Paso 5 - Renovar el access token**
+Usá el campo `sub` como identificador único del alumno en tu sistema. Es el ID interno de Autogestión y no cambia.
 
-El `access_token` expira. Cuando eso ocurra, usá el `refresh_token` para obtener uno nuevo sin pedirle al usuario que vuelva a loguearse.
+#### Paso 5 — Renovar el access token
+
+El access token expira en 15 minutos. Cuando expire, renovalo con el refresh token desde tu backend:
 
 ```http
 POST https://sso.frvm.utn.edu.ar/sso/refresh
@@ -170,106 +159,167 @@ Content-Type: application/json
 }
 ```
 
-### 4. Notas de seguridad
+Respuesta: nuevos `access_token` y `refresh_token`. Reemplazá ambos — el refresh token anterior queda inválido (rotación automática).
 
-- El `client_secret` debe vivir únicamente en tu backend. Nunca lo expongas en el frontend.
-- El `code` es de un solo uso y expira en 2 minutos.
-- Siempre verificá que el `state` del `postMessage` coincida con el que generaste.
-- Siempre verificá que el `event.origin` del `postMessage` sea el dominio oficial del SSO.
-- Si perdés el `client_secret`, pedile al administrador que lo regenere desde el panel.
+> Si intentás usar un refresh token que ya fue usado, el servidor detecta una posible reutilización maliciosa y **revoca toda la sesión**. El alumno tendrá que volver a loguearse.
+
+#### Paso 6 — Cerrar sesión
+
+Para cerrar la sesión del alumno, revocá el refresh token desde tu backend:
+
+```http
+POST https://sso.frvm.utn.edu.ar/sso/logout
+Content-Type: application/json
+
+{
+  "refresh_token": "TU_REFRESH_TOKEN"
+}
+```
+
+Respuesta: `204 No Content`. El access token expira naturalmente en máximo 15 minutos.
 
 
+### Consideraciones de seguridad
 
-## Levantar el proyecto
+- **Verificá siempre `event.origin`** en el listener de `postMessage`.
+- **Verificá siempre el `state`** para prevenir ataques CSRF en el flujo OAuth.
+- **Nunca guardes el Client Secret en el frontend** — debe estar exclusivamente en tu backend.
+- **Nunca guardes access o refresh tokens en `localStorage`** — usá cookies `HttpOnly` o almacenamiento en servidor.
+- El code de autorización es de un solo uso y expira en 2 minutos.
+- El refresh token rota en cada uso — guardá siempre el último que recibís.
+
+
+## Levantar el proyecto localmente
 
 ### Requisitos previos
 
-- Node.js
-- Docker y Docker Compose
+- Node.js 22+
+- PostgreSQL 14+
+- Una cuenta SMTP (Gmail con App Password funciona)
 
 ### Instalación
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/ignamosconi/sso-frvm.git
 cd sso-frvm
-
-# 2. Instalar dependencias
 npm install
-
-# 3. Configurar variables de entorno
-cp .env.example .env
-# Editá .env y completá los valores (ver sección siguiente)
-
-# 4. Levantar la base de datos
-docker compose up -d
-
-# 5. Levantar el servidor en desarrollo
-npm run start:dev
-
-# O en producción
-npm run build
-npm run start:prod
 ```
 
 ### Variables de entorno
 
-| Variable | Descripción | Ejemplo |
-|---|---|---|
-| `PORT` | Puerto del servidor | `3000` |
-| `AUTH_ROUTE_PATH` | Prefijo de rutas SSO | `sso` |
-| `AUTOGESTION_BASE_URL` | URL del webservice de autogestión UTN | `https://webservice.frvm.utn.edu.ar/autogestion` |
-| `DB_HOST` | Host de PostgreSQL | `localhost` |
-| `DB_PORT` | Puerto de PostgreSQL | `5432` |
-| `DB_USERNAME` | Usuario de PostgreSQL | `postgres` |
-| `DB_PASSWORD` | Contraseña de PostgreSQL | `postgres` |
-| `DB_NAME` | Nombre de la base de datos | `sso_frvm` |
-| `JWT_ACCESS_SECRET` | Secret para firmar access tokens de alumnos | *(string aleatorio largo y único,)* |
-| `JWT_REFRESH_SECRET` | Secret para firmar refresh tokens de alumnos | *(string aleatorio largo y único)* |
-| `JWT_ACCESS_EXPIRES_IN` | Duración del access token de alumnos | `15m` |
-| `JWT_REFRESH_EXPIRES_IN` | Duración del refresh token de alumnos | `7d` |
-| `JWT_ADMIN_ACCESS_SECRET` | Secret para firmar access tokens de admins | *(string aleatorio largo y único)* |
-| `JWT_ADMIN_REFRESH_SECRET` | Secret para firmar refresh tokens de admins | *(string aleatorio largo y único)* |
-| `JWT_ADMIN_ACCESS_EXPIRES_IN` | Duración del access token de admins | `15m` |
-| `JWT_ADMIN_REFRESH_EXPIRES_IN` | Duración del refresh token de admins | `7d` |
-| `CODE_TTL_MS` | Duración del authorization code en milisegundos | `120000` |
-| `ADMIN_USERNAME_SEEDER` | Usuario del primer administrador | `admin` |
-| `ADMIN_PASSWORD_SEEDER` | Contraseña del primer administrador | *(elegí una segura)* |
-| `SWAGGER_USER` | Usuario para acceder a la documentación | `admin` |
-| `SWAGGER_PASSWORD` | Contraseña para acceder a la documentación | *(elegí una segura)* |
-| `ADMIN_PANEL_URL` | URL del panel de administración (CORS) | `http://localhost:5173` |
-| `MAIL_HOST` | Host SMTP para envío de emails | `smtp.gmail.com` |
-| `MAIL_PORT` | Puerto SMTP | `587` |
-| `MAIL_USER` | Usuario SMTP | `tu.correo@gmail.com` |
-| `MAIL_PASS` | Contraseña SMTP (app password) | *(generá una en tu cuenta)* |
-| `MAIL_FROM` | Dirección de origen de los emails | `tu.correo@gmail.com` |
-| `SSO_BASE_URL` | URL pública del SSO (se incluye en emails) | *(completar según despliegue)* |
-
-### Seeder de administrador
-
-Al arrancar el servidor por primera vez, se ejecuta automáticamente un seeder que crea el primer administrador del sistema con las credenciales definidas en `ADMIN_USERNAME_SEEDER` y `ADMIN_PASSWORD_SEEDER`. Si el usuario ya existe, el seeder no hace nada. Este comportamiento es intencional para que el primer deploy funcione sin intervención manual y para que reinicios posteriores no dupliquen el admin.
-
-### Migraciones
-
-Las migraciones se corren automáticamente al arrancar el servidor. Para generar una nueva migración tras modificar una entidad:
+Copiá el archivo de ejemplo y completá los valores:
 
 ```bash
+cp .env.example .env
+```
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `NODE_ENV` | Entorno. En `production` activa validaciones de secretos y desactiva el seeder. | `development` |
+| `PORT` | Puerto en el que escucha el servidor. | `3000` |
+| `AUTH_ROUTE_PATH` | Prefijo de ruta para los endpoints SSO de alumnos. | `sso` |
+| `CODE_TTL_MS` | TTL del authorization code en milisegundos. | `120000` |
+| `CREDENTIAL_TOKEN_TTL_MS` | TTL del link de credenciales de un solo uso en ms. | `86400000` |
+| `CREDENTIAL_ENCRYPTION_KEY` | Clave AES-256-GCM para cifrar secrets en reposo. **64 chars hex.** Generá con: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | — |
+| `TOTP_ENCRYPTION_KEY` | Clave AES-256-GCM para cifrar secrets TOTP en reposo. **64 chars hex.** Mismo comando. | — |
+| `AUTOGESTION_BASE_URL` | URL base del endpoint público de Autogestión UTN FRVM. | `https://webservice.frvm.utn.edu.ar/autogestion` |
+| `ADMIN_PANEL_URL` | URL del panel de administración (para CORS). | `http://localhost:5173` |
+| `SSO_BASE_URL` | URL pública de este backend (usada en emails). | `http://localhost:3000` |
+| `DB_HOST` | Host de PostgreSQL. | `localhost` |
+| `DB_PORT` | Puerto de PostgreSQL. | `5432` |
+| `DB_USERNAME` | Usuario de PostgreSQL. | `postgres` |
+| `DB_PASSWORD` | Password de PostgreSQL. | `postgres` |
+| `DB_NAME` | Nombre de la base de datos. | `sso_frvm` |
+| `JWT_ACCESS_SECRET` | Secret para firmar access tokens de alumnos. Mínimo 64 chars. | — |
+| `JWT_REFRESH_SECRET` | Secret para firmar refresh tokens de alumnos. Distinto al anterior. | — |
+| `JWT_ACCESS_EXPIRES_IN` | Expiración del access token de alumnos. | `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Expiración del refresh token de alumnos. | `1d` |
+| `JWT_ADMIN_ACCESS_SECRET` | Secret para access tokens de admins. Distinto a los de alumnos. | — |
+| `JWT_ADMIN_REFRESH_SECRET` | Secret para refresh tokens de admins. Distinto a todos los anteriores. | — |
+| `JWT_ADMIN_ACCESS_EXPIRES_IN` | Expiración del access token de admins. | `15m` |
+| `JWT_ADMIN_REFRESH_EXPIRES_IN` | Expiración del refresh token de admins. | `1d` |
+| `ADMIN_USERNAME_SEEDER` | Username del admin inicial creado por el seeder (solo en desarrollo). | `admin` |
+| `ADMIN_PASSWORD_SEEDER` | Password del admin inicial (mínimo 8 caracteres). | — |
+| `SWAGGER_USER` | Usuario para acceder a la documentación Swagger. | `admin` |
+| `SWAGGER_PASSWORD` | Password para acceder a la documentación Swagger. | — |
+| `MAIL_HOST` | Host SMTP para envío de emails. | `smtp.gmail.com` |
+| `MAIL_PORT` | Puerto SMTP. | `587` |
+| `MAIL_USER` | Usuario SMTP. | `tu_correo@gmail.com` |
+| `MAIL_PASS` | Password SMTP (para Gmail, usar App Password). | — |
+| `MAIL_FROM` | Dirección remitente de los emails. | `tu_correo@gmail.com` |
+
+> **En producción** todos los secrets JWT, `CREDENTIAL_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY` y `ADMIN_PASSWORD_SEEDER` deben ser distintos a cualquier valor del `.env.example`. El servidor no arranca si detecta valores por defecto conocidos con `NODE_ENV=production`.
+
+### Base de datos y migraciones
+
+Las migraciones corren automáticamente al levantar el servidor (`migrationsRun: true`). No hace falta correrlas manualmente en desarrollo.
+
+Para generar una nueva migración tras modificar entidades:
+
+```bash
+npm run migration:generate
+```
+
+Para correr migraciones manualmente:
+
+```bash
+npm run migration:run
+```
+
+### Seeder
+
+En entorno `development`, al levantar el servidor se crea automáticamente el primer admin si no existe ninguno, usando las credenciales `ADMIN_USERNAME_SEEDER` / `ADMIN_PASSWORD_SEEDER` del `.env`.
+
+En producción (`NODE_ENV=production`) el seeder está deshabilitado. El primer admin debe crearse manualmente vía CLI o directamente en la DB.
+
+### Comandos
+
+```bash
+# Instalar dependencias
+npm install
+
+# Levantar en modo desarrollo (con hot reload)
+npm run start:dev
+
+# Build de producción
 npm run build
-npx typeorm migration:generate src/database/migrations/nombre-descriptivo -d dist/database/datasource.js
-npm run build
+
+# Levantar en modo producción
 npm run start:prod
+
+# Correr tests unitarios
+npm run test
+
+# Correr tests con cobertura
+npm run test:cov
+
+# Lint
+npm run lint
 ```
 
 ### Documentación de la API
 
-La documentación interactiva de todos los endpoints está disponible en `/docs` una vez que el servidor está corriendo. Requiere las credenciales definidas en `SWAGGER_USER` y `SWAGGER_PASSWORD`.
+Con el servidor corriendo, la documentación Swagger está disponible en:
 
+```
+http://localhost:3000/docs
+```
+
+Requiere las credenciales `SWAGGER_USER` / `SWAGGER_PASSWORD` definidas en el `.env`.
 
 
 ## Panel de administración
 
-Para gestionar administradores y clientes OAuth registrados se diseñó un panel de administración con interfaz gráfica, disponible en:
+Para gestionar el sistema sin usar la API directamente, existe un panel de administración web en el repositorio:
 
-[github.com/ignamosconi/sso-frvm-admin](https://github.com/ignamosconi/sso-frvm-admin)
+**[github.com/ignamosconi/sso-frvm-admin](https://github.com/ignamosconi/sso-frvm-admin)**
 
-El panel permite crear y eliminar administradores, registrar nuevas apps cliente, gestionar sus redirect URIs, regenerar secrets y enviar las credenciales por email al desarrollador.
+El panel permite:
+
+- Iniciar sesión como administrador con autenticación de dos factores (TOTP).
+- Resetear la autenticación de dos factores (2FA) proporcionando la password actual. Esto invalida el secret TOTP actual y obliga al administrador a configurar 2FA nuevamente en su próximo login.
+- Crear y eliminar administradores del sistema.
+- Registrar nuevas aplicaciones cliente, gestionar sus redirect URIs y ver su estado.
+- Suspender y reactivar aplicaciones.
+- Regenerar client secrets.
+- Enviar las credenciales de acceso al desarrollador de la app por email, mediante un link de un solo uso que expira en 24 horas.
