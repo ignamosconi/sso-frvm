@@ -15,6 +15,6 @@ export class UpdateOAuthClientDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(5)
-  @IsUrl({ require_tld: false, require_protocol: true, protocols: ['http', 'https']
+  @IsUrl({ require_tld: false, require_protocol: true, protocols: ['http', 'https'] }, { each: true })
   redirectUris?: string[];
 }
