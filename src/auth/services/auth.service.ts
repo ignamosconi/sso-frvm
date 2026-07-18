@@ -17,7 +17,7 @@ import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
 import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto.js';
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
-
+import { JwtSignOptions } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -127,11 +127,11 @@ export class AuthService implements IAuthService {
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(
         { ...entry.userInfo, type: 'access' },
-        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
         { ...entry.userInfo, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
 
@@ -170,16 +170,24 @@ export class AuthService implements IAuthService {
     // Consumir en DB (detecta reutilización y revoca familia si es necesario)
     const record = await this.refreshTokenService.consume(refreshRequestDto.refresh_token);
 
-    const { type: _, iat: __, exp: ___, ...userInfo } = storedPayload;
+    const userInfo: Omit<JwtPayloadDto, 'type' | 'iat' | 'exp'> = {
+      sub: storedPayload.sub,
+      nombre: storedPayload.nombre,
+      apellido: storedPayload.apellido,
+      legajo: storedPayload.legajo,
+      carrera: storedPayload.carrera,
+      email: storedPayload.email,
+      grupo: storedPayload.grupo,
+    };
 
     const [newAccessToken, newRefreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { ...userInfo, type: 'access' },
-        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
         { ...userInfo, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
 
@@ -217,7 +225,14 @@ export class AuthService implements IAuthService {
   }
 
   getCleanUserInfo(payload: JwtPayloadDto): UserInfoOauthDto {
-    const { type: _, iat: __, exp: ___, ...userInfo } = payload;
-    return userInfo;
+    return {
+      sub: payload.sub,
+      nombre: payload.nombre,
+      apellido: payload.apellido,
+      legajo: payload.legajo,
+      carrera: payload.carrera,
+      email: payload.email,
+      grupo: payload.grupo,
+    };
   }
 }

@@ -20,6 +20,7 @@ import { AdminLogoutRequestDto } from '../dtos/admin-logout-request.dto.js';
 import { TokenResponseDto } from '../../auth/dtos/token-response.dto.js';
 import type { IRefreshTokenService } from '../../refresh-token/services/refresh-token.service.interface.js';
 import { Admin2faResetDto } from '../dtos/admin-2fa-reset.dto.js';
+import { JwtSignOptions } from '@nestjs/jwt';
 
 @Injectable()
 export class AdminAuthService implements IAdminAuthService {
@@ -102,11 +103,11 @@ export class AdminAuthService implements IAdminAuthService {
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(
         { sub: admin.id, username: admin.username, type: 'access' },
-        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
         { sub: admin.id, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
 
@@ -238,11 +239,11 @@ export class AdminAuthService implements IAdminAuthService {
     const [newAccessToken, newRefreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { sub: admin.id, username: admin.username, type: 'access' },
-        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
         { sub: admin.id, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
 

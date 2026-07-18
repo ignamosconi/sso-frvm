@@ -80,7 +80,8 @@ export class RefreshTokenService implements IRefreshTokenService{
       throw new UnauthorizedException('Refresh token inválido o revocado.');
     }
 
-    const record: RefreshTokenEntity = result.raw[0];
+    const raw = result.raw as RefreshTokenEntity[];
+    const record = raw[0];
 
     // Verificar expiración después del UPDATE (el índice no filtra por fecha)
     if (new Date(record.expiresAt) < new Date()) {

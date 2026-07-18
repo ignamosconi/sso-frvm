@@ -4,7 +4,7 @@ import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
 import { Admin2faResetDto } from '../dtos/admin-2fa-reset.dto.js';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IAdminAuthController } from './admin-auth.controller.interface.js';
+import type { IAdminAuthController, RequestWithAdmin } from './admin-auth.controller.interface.js';
 import type { IAdminAuthService } from '../services/admin-auth.service.interface.js';
 import { AdminLoginRequestDto } from '../dtos/admin-login-request.dto.js';
 import { AdminLoginResponseDto } from '../dtos/admin-login-response.dto.js';
@@ -80,7 +80,7 @@ export class AdminAuthController implements IAdminAuthController {
   @UseGuards(AdminJwtGuard)
   @HttpCode(204)
   @Post('2fa/reset')
-  reset2fa(@Request() req: any, @Body() dto: Admin2faResetDto): Promise<void> {
+  reset2fa(@Request() req: RequestWithAdmin, @Body() dto: Admin2faResetDto): Promise<void> {
     return this.adminAuthService.reset2fa(req.admin.sub, dto);
   }
 

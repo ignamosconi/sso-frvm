@@ -13,8 +13,8 @@ export class JwtGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<ExpressRequest>();
-    const authHeader = request.headers['authorization'] as string | undefined;
+    const request = context.switchToHttp().getRequest<ExpressRequest & { user?: UserInfoOauthDto }>();
+    const authHeader = request.headers['authorization'];
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('Token no proporcionado.');
@@ -31,7 +31,8 @@ export class JwtGuard implements CanActivate {
         throw new UnauthorizedException('El token proporcionado no es un access token.');
       }
 
-      (request as ExpressRequest & { user: UserInfoOauthDto }).user = payload;
+      const typedRequest = request as ExpressRequest & { user: UserInfoOauthDto };
+      typedRequest.user = payload;
       
     } catch {
       throw new UnauthorizedException('Token inválido o expirado.');

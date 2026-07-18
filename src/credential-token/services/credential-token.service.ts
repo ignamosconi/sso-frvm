@@ -81,17 +81,40 @@ export class CredentialTokenService implements ICredentialTokenService {
 
     if (result.affected === 0) {
       const existing = await this.repo.findOne({ where: { tokenHash } });
-      if (!existing) throw new NotFoundException('El link no es válido.');
-      if (existing.used) throw new GoneException('Este link ya fue utilizado.');
+
+      if (!existing) {
+        throw new NotFoundException('El link no es válido.');
+      }
+
+      if (existing.used) {
+        throw new GoneException('Este link ya fue utilizado.');
+      }
+
       throw new GoneException('Este link ha expirado.');
     }
 
-    const record = result.raw[0] as CredentialTokenEntity;
+    const raw: unknown = result.raw;
+
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new NotFoundException('No se pudo obtener el token.');
+    }
+
+    const record = raw[0] as CredentialTokenEntity;
+
+    const parsedRedirectUris: unknown = JSON.parse(record.redirectUris);
+
+    if (
+      !Array.isArray(parsedRedirectUris) ||
+      !parsedRedirectUris.every((uri): uri is string => typeof uri === 'string')
+    ) {
+      throw new Error('Los redirect URIs almacenados no tienen un formato válido.');
+    }
+
     return {
       oauthClientId: record.oauthClientId,
       plainSecret: this.decrypt(record.encryptedSecret),
       clientName: record.clientName,
-      redirectUris: JSON.parse(record.redirectUris),
-    };
+      redirectUris: parsedRedirectUris,
+    }
   }
 }

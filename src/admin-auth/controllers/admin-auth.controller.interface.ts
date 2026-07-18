@@ -8,13 +8,18 @@ import { Admin2faConfirmDto } from '../dtos/admin-2fa-confirm.dto.js';
 import { Admin2faValidateDto } from '../dtos/admin-2fa-validate.dto.js';
 import { Admin2faResetDto } from '../dtos/admin-2fa-reset.dto.js';
 import { TokenResponseDto } from '../../auth/dtos/token-response.dto.js';
+import { AdminJwtPayloadDto } from '../dtos/admin-jwt-payload.dto.js';
+
+export interface RequestWithAdmin {
+  admin: AdminJwtPayloadDto;
+}
 
 export interface IAdminAuthController {
   login(dto: AdminLoginRequestDto): Promise<AdminLoginResponseDto>;
   setup2fa(dto: Admin2faSetupRequestDto): Promise<Admin2faSetupResponseDto>;
   confirm2fa(dto: Admin2faConfirmDto): Promise<TokenResponseDto>;
   validate2fa(dto: Admin2faValidateDto): Promise<TokenResponseDto>;
-  reset2fa(adminId: string, dto: Admin2faResetDto): Promise<void>;
+  reset2fa(req: RequestWithAdmin, dto: Admin2faResetDto): Promise<void>;
   refresh(dto: AdminRefreshRequestDto): Promise<TokenResponseDto>;
   logout(dto: AdminLogoutRequestDto): Promise<void>;
 }

@@ -1,11 +1,12 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+import type { Request, Response } from 'express';
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import basicAuth = require('express-basic-auth');
+import basicAuth from 'express-basic-auth';
 import { AppModule } from './app.module.js';
 import { ConfigService } from '@nestjs/config';
 import { AdminSeeder } from './database/seeders/admin.seeder.js';
@@ -123,10 +124,10 @@ async function bootstrap() {
   await seeder.seed();
 
   const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/health', (_req: any, res: any) => {
+  httpAdapter.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
   });
 
   await app.listen(port);
 }
-bootstrap();
+void bootstrap();

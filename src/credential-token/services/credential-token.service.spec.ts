@@ -25,7 +25,7 @@ function makeToken(overrides: Partial<CredentialTokenEntity> = {}): CredentialTo
 
 describe('CredentialTokenService', () => {
   let service: CredentialTokenService;
-  let mockRepo: jest.Mocked<any>;
+    let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {

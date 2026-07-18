@@ -31,9 +31,10 @@ function makeAdmin(overrides: Partial<AdminEntity> = {}): AdminEntity {
 
 describe('AdminAuthService', () => {
   let service: AdminAuthService;
-  let mockRepo: jest.Mocked<any>;
+
+  let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
   let mockJwtService: jest.Mocked<Partial<JwtService>>;
-  let mockRefreshTokenService: jest.Mocked<any>;
+  let mockRefreshTokenService: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {

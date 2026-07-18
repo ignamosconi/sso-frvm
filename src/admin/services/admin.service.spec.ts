@@ -4,6 +4,28 @@ import { NotFoundException, ConflictException, BadRequestException } from '@nest
 import { AdminService } from './admin.service.js';
 import { AdminEntity } from '../entities/admin.entity.js';
 
+type MockEntityManager = {
+  remove: jest.Mock;
+  getRepository: jest.Mock;
+};
+
+type MockRepository = {
+  find: jest.Mock;
+  findOne: jest.Mock;
+  create: jest.Mock;
+  save: jest.Mock;
+  count: jest.Mock;
+  remove: jest.Mock;
+  manager: {
+    transaction: jest.Mock;
+  };
+};
+
+type MockRefreshTokenService = {
+  revokeAllForSub: jest.Mock;
+};
+
+
 function makeAdmin(overrides: Partial<AdminEntity> = {}): AdminEntity {
   return {
     id: 'uuid-1',
@@ -19,8 +41,8 @@ function makeAdmin(overrides: Partial<AdminEntity> = {}): AdminEntity {
 
 describe('AdminService', () => {
   let service: AdminService;
-  let mockRepo: jest.Mocked<any>;
-  let mockRefreshTokenService: jest.Mocked<any>;
+  let mockRepo: MockRepository;
+  let mockRefreshTokenService: MockRefreshTokenService;
 
   beforeEach(async () => {
     mockRepo = {
@@ -108,12 +130,16 @@ describe('AdminService', () => {
       mockRepo.count.mockResolvedValue(2);
 
       // Simular que transaction ejecuta el callback
-      mockRepo.manager.transaction.mockImplementation(async (cb: any) => {
-        await cb({
-          remove: jest.fn(),
-          getRepository: jest.fn(),
-        });
-      });
+      mockRepo.manager.transaction.mockImplementation(
+        async (
+          cb: (manager: MockEntityManager) => Promise<void>,
+        ): Promise<void> => {
+          await cb({
+            remove: jest.fn(),
+            getRepository: jest.fn(),
+          });
+        },
+      );
       mockRefreshTokenService.revokeAllForSub.mockResolvedValue(undefined);
 
       await service.remove('uuid-1');

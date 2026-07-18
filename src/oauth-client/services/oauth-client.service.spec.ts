@@ -26,8 +26,8 @@ function makeClient(overrides: Partial<OAuthClientEntity> = {}): OAuthClientEnti
 
 describe('OAuthClientService', () => {
   let service: OAuthClientService;
-  let mockRepo: jest.Mocked<any>;
-  let mockCredentialTokenService: jest.Mocked<any>;
+  let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
+  let mockCredentialTokenService: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {

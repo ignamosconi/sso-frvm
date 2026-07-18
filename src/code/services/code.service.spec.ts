@@ -79,9 +79,9 @@ describe('CodeService', () => {
     it('debería retornar null si el código expiró', () => {
       // Creamos un service con TTL de 1ms
       const fastService = new CodeService({
-        getOrThrow: () => '1',
-      } as any);
-
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        getOrThrow: (_key: string) => '1',
+      } as unknown as ConfigService);
       const code = fastService.generate(mockUserInfo, 1);
 
       // Esperamos a que expire

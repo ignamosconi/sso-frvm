@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { UnauthorizedException } from '@nestjs/common';
 import { RefreshTokenService } from './refresh-token.service.js';
 import { RefreshTokenEntity } from '../entities/refresh-token.entity.js';
+import { EntityManager } from 'typeorm';
 
 // Helper para construir un registro de refresh token falso
 function makeRecord(overrides: Partial<RefreshTokenEntity> = {}): RefreshTokenEntity {
@@ -22,7 +23,7 @@ function makeRecord(overrides: Partial<RefreshTokenEntity> = {}): RefreshTokenEn
 
 describe('RefreshTokenService', () => {
   let service: RefreshTokenService;
-  let mockRepo: jest.Mocked<any>;
+  let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {
@@ -188,7 +189,7 @@ describe('RefreshTokenService', () => {
           update: jest.fn().mockResolvedValue({}),
         }),
       };
-      await service.revokeAllForSub('admin-uuid', mockManager as any);
+      await service.revokeAllForSub('admin-uuid', mockManager as unknown as EntityManager);
       expect(mockManager.getRepository).toHaveBeenCalledWith(RefreshTokenEntity);
     });
   });
