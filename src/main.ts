@@ -11,43 +11,7 @@ import { AppModule } from './app.module.js';
 import { ConfigService } from '@nestjs/config';
 import { AdminSeeder } from './database/seeders/admin.seeder.js';
 
-// DESPUÉS
-const KNOWN_WEAK_SECRETS = new Set([
-  'cambia_este_secret_acceso',
-  'cambia_este_secret_refresco',
-  'cambia_este_secret_admin_acceso',
-  'cambia_este_secret_admin_refresco',
-  'cambia_esta_password_min_8_caracteres',
-  'cambia_esta_password_swagger',
-  'admin',   // SWAGGER_USER por defecto
-]);
 
-function assertSecrets(configService: ConfigService): void {
-  const env = configService.get<string>('NODE_ENV') ?? 'development';
-  if (env !== 'production') return;
-
-  const secretsToCheck: string[] = [
-    configService.get<string>('JWT_ACCESS_SECRET') ?? '',
-    configService.get<string>('JWT_REFRESH_SECRET') ?? '',
-    configService.get<string>('JWT_ADMIN_ACCESS_SECRET') ?? '',
-    configService.get<string>('JWT_ADMIN_REFRESH_SECRET') ?? '',
-    configService.get<string>('ADMIN_PASSWORD_SEEDER') ?? '',
-    configService.get<string>('SWAGGER_PASSWORD') ?? '',
-    configService.get<string>('SWAGGER_USER') ?? '',
-  ];
-
-  for (const secret of secretsToCheck) {
-    if (KNOWN_WEAK_SECRETS.has(secret)) {
-      throw new Error(
-        '[Seguridad] Se detectó un secreto por defecto del .env.example en entorno production. ' +
-        'Rotá todos los secretos JWT, passwords de seeder y credenciales de Swagger antes de desplegar.',
-      );
-    }
-  }
-}
-import { AdminSeeder } from './database/seeders/admin.seeder.js';
-
-// DESPUÉS
 const KNOWN_WEAK_SECRETS = new Set([
   'cambia_este_secret_acceso',
   'cambia_este_secret_refresco',
