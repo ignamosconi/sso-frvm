@@ -64,6 +64,8 @@ const popup = window.open(
 );
 ```
 
+(!) El popup de login del SSO soporta modo oscuro y modo claro. Podés pasarle el parámetro theme=light o theme=dark en la URL para que coincida con el tema de tu app.
+
 #### Paso 2 — Escuchar el resultado
 
 El popup envía el authorization code vía `postMessage`. Verificá siempre el origen y el state antes de procesarlo:
