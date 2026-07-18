@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Inject, UseGuards, ParseUUIDPipe, Request } from '@nestjs/common';
+import { AdminJwtPayloadDto } from '../../admin-auth/dtos/admin-jwt-payload.dto.js';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IAdminController } from './admin.controller.interface.js';
 import type { IAdminService } from '../services/admin.service.interface.js';
@@ -6,6 +7,11 @@ import { CreateAdminDto } from '../dtos/create-admin.dto.js';
 import { UpdateAdminDto } from '../dtos/update-admin.dto.js';
 import { AdminResponseDto } from '../dtos/admin-response.dto.js';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
+
+interface RequestWithAdmin {
+  admin: AdminJwtPayloadDto;
+}
+
 
 @ApiTags('Admin — Gestión de administradores')
 @ApiBearerAuth('admin-jwt')
@@ -47,7 +53,7 @@ export class AdminController implements IAdminController {
   @ApiResponse({ status: 200, type: AdminResponseDto })
   @ApiResponse({ status: 404, description: 'Admin no encontrado' })
   @Patch('me')
-  updateSelf(@Body() dto: UpdateAdminDto, @Request() req: any): Promise<AdminResponseDto> {
+  updateSelf(@Body() dto: UpdateAdminDto, @Request() req: RequestWithAdmin): Promise<AdminResponseDto> {
     return this.adminService.updateSelf(req.admin.sub, dto);
   }
 

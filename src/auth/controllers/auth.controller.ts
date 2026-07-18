@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, Res, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, Inject, UseGuards, HttpCode } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { join } from 'path';
 import { IAuthController } from './auth.controller.interface.js';
@@ -6,6 +7,7 @@ import type { IAuthService } from '../services/auth.service.interface.js';
 import { LoginRequestDto } from '../dtos/login-request.dto.js';
 import { AuthorizationCodeRequestDto } from '../dtos/authorization-code-request.dto.js';
 import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
+import { LogoutRequestDto } from '../dtos/logout-request.dto.js';
 import { CodeResponseDto } from '../dtos/code-response.dto.js';
 import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
@@ -36,6 +38,7 @@ export class AuthController implements IAuthController {
   @ApiResponse({ status: 201, type: CodeResponseDto })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas o client_id/redirect_uri incorrectos' })
   @ApiResponse({ status: 400, description: 'Body malformado' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })  // 5 intentos por minuto por IP
   @Post('login')
   async login(@Body() loginDto: LoginRequestDto): Promise<CodeResponseDto> {
     return this.authService.issueCode(loginDto);
@@ -47,6 +50,7 @@ export class AuthController implements IAuthController {
   })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 401, description: 'Code inválido, expirado, o credenciales de cliente incorrectas' })
+  @Throttle({ default: { ttl: 60000, limit: 10 } })  // 10 canjes por minuto por IP
   @Post('token')
   async token(@Body() dto: AuthorizationCodeRequestDto): Promise<TokenResponseDto> {
     return this.authService.exchangeCodeForTokens(dto);
@@ -61,6 +65,17 @@ export class AuthController implements IAuthController {
   @Post('refresh')
   async refresh(@Body() refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
     return this.authService.refreshTokens(refreshRequestDto);
+  }
+
+  @ApiOperation({
+    summary: 'Cerrar sesión de alumno',
+    description: 'Revoca el refresh token y toda su familia. El access token expira naturalmente (máx. 15m).',
+  })
+  @ApiResponse({ status: 204, description: 'Sesión cerrada correctamente' })
+  @HttpCode(204)
+  @Post('logout')
+  async logout(@Body() dto: LogoutRequestDto): Promise<void> {
+    return this.authService.logout(dto);
   }
 
   @ApiOperation({

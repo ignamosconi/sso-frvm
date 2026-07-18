@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
@@ -10,6 +13,9 @@ import { OAuthClientModule } from './oauth-client/oauth-client.module.js';
 import { CodeModule } from './code/code.module.js';
 import { AdminEntity } from './admin/entities/admin.entity.js';
 import { OAuthClientEntity } from './oauth-client/entities/oauth-client.entity.js';
+import { RefreshTokenEntity } from './refresh-token/entities/refresh-token.entity.js';
+import { CredentialTokenEntity } from './credential-token/entities/credential-token.entity.js';
+import { CredentialTokenModule } from './credential-token/credential-token.module.js';
 import { AdminSeeder } from './database/seeders/admin.seeder.js';
 
 @Module({
@@ -31,7 +37,12 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
         username: configService.getOrThrow<string>('DB_USERNAME'),
         password: configService.getOrThrow<string>('DB_PASSWORD'),
         database: configService.getOrThrow<string>('DB_NAME'),
-        entities: [AdminEntity, OAuthClientEntity],
+        entities: [
+          AdminEntity, 
+          OAuthClientEntity,
+          RefreshTokenEntity,
+          CredentialTokenEntity,
+        ],
         synchronize: false,
         migrations: [join(__dirname, 'database', 'migrations', '*.js')],
         migrationsRun: true,
@@ -39,12 +50,29 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
     }),
 
     TypeOrmModule.forFeature([AdminEntity]),
+
+    ThrottlerModule.forRoot([
+      {
+        name: 'global',
+        ttl: 60000,   // ventana de 60 segundos
+        limit: 30,    // máximo 30 requests por IP en esa ventana (endpoints generales)
+      },
+    ]),
+
     AuthModule,
     AdminModule,
     AdminAuthModule,
     OAuthClientModule,
     CodeModule,
+    CredentialTokenModule,
   ],
-  providers: [AdminSeeder],
+  providers: [    
+    AdminSeeder,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
+  
 })
 export class AppModule {}
