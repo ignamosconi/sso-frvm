@@ -6,15 +6,18 @@ import { firstValueFrom } from 'rxjs';
 import { IAuthService } from './auth.service.interface.js';
 import type { ICodeService } from '../../code/services/code.service.interface.js';
 import type { IOAuthClientService } from '../../oauth-client/services/oauth-client.service.interface.js';
+import type { IRefreshTokenService } from '../../refresh-token/services/refresh-token.service.interface.js';
 import { LoginRequestDto } from '../dtos/login-request.dto.js';
 import { AuthorizationCodeRequestDto } from '../dtos/authorization-code-request.dto.js';
 import { RefreshRequestDto } from '../dtos/refresh-request.dto.js';
+import { LogoutRequestDto } from '../dtos/logout-request.dto.js';
 import { CodeResponseDto } from '../dtos/code-response.dto.js';
 import { TokenResponseDto } from '../dtos/token-response.dto.js';
 import { UserInfoOauthDto } from '../dtos/user-info-oauth.dto.js';
 import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.dto.js';
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
+import { JwtSignOptions } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -32,6 +35,8 @@ export class AuthService implements IAuthService {
     private readonly codeService: ICodeService,
     @Inject('IOAuthClientService')
     private readonly oauthClientService: IOAuthClientService,
+    @Inject('IRefreshTokenService')
+    private readonly refreshTokenService: IRefreshTokenService,
   ) {
     this.baseUrl = this.configService.getOrThrow<string>('AUTOGESTION_BASE_URL');
     this.accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
@@ -47,7 +52,10 @@ export class AuthService implements IAuthService {
         this.httpService.post<AutogestionLoginResponseDto>(
           `${this.baseUrl}/login`,
           {},
-          { headers: { nick: loginDto.legajo, password: loginDto.password } },
+          {
+            headers: { nick: loginDto.legajo, password: loginDto.password },
+            timeout: 8000,
+          },
         ),
       );
       loginData = loginResponse.data;
@@ -67,6 +75,7 @@ export class AuthService implements IAuthService {
       const userResponse = await firstValueFrom(
         this.httpService.get<AutogestionUserResponseDto>(`${this.baseUrl}/usuarios`, {
           headers: { Authorization: `Basic ${base64Credentials}` },
+          timeout: 8000,
         }),
       );
       userData = userResponse.data;
@@ -95,12 +104,13 @@ export class AuthService implements IAuthService {
 
     const client = await this.oauthClientService.findOne(clientId).catch(() => null);
     if (!client) throw new UnauthorizedException('client_id inválido.');
+    if (!client.isActive) throw new UnauthorizedException('La aplicación está suspendida.');
     if (!client.redirectUris.includes(loginDto.redirect_uri)) {
       throw new UnauthorizedException('redirect_uri no coincide con las registradas.');
     }
 
     const userInfo = await this.validateAndGetUserInfo(loginDto);
-    const code = this.codeService.generate(userInfo, clientId); // <- pasa userInfo completo
+    const code = this.codeService.generate(userInfo, clientId);
     return { code, state: loginDto.state };
   }
 
@@ -117,13 +127,21 @@ export class AuthService implements IAuthService {
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(
         { ...entry.userInfo, type: 'access' },
-        { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
         { ...entry.userInfo, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn as any },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
+
+    // Guardar refresh token en DB (inicio de nueva familia)
+    await this.refreshTokenService.save({
+      token: refresh_token,
+      sub: entry.userInfo.sub,
+      type: 'student',
+      expiresIn: this.refreshExpiresIn,
+    });
 
     return {
       access_token,
@@ -134,6 +152,7 @@ export class AuthService implements IAuthService {
   }
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
+    // Verificar firma JWT primero
     let storedPayload: JwtPayloadDto;
     try {
       storedPayload = await this.jwtService.verifyAsync<JwtPayloadDto>(
@@ -148,19 +167,49 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('El token proporcionado no es un refresh token.');
     }
 
-    const { type: _, iat: __, exp: ___, ...userInfo } = storedPayload;
+    // Consumir en DB (detecta reutilización y revoca familia si es necesario)
+    const record = await this.refreshTokenService.consume(refreshRequestDto.refresh_token);
 
-    const newAccessToken = await this.jwtService.signAsync(
-      { ...userInfo, type: 'access' },
-      { secret: this.accessSecret, expiresIn: this.accessExpiresIn as any },
-    );
+    const userInfo: Omit<JwtPayloadDto, 'type' | 'iat' | 'exp'> = {
+      sub: storedPayload.sub,
+      nombre: storedPayload.nombre,
+      apellido: storedPayload.apellido,
+      legajo: storedPayload.legajo,
+      carrera: storedPayload.carrera,
+      email: storedPayload.email,
+      grupo: storedPayload.grupo,
+    };
+
+    const [newAccessToken, newRefreshToken] = await Promise.all([
+      this.jwtService.signAsync(
+        { ...userInfo, type: 'access' },
+        { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
+      ),
+      this.jwtService.signAsync(
+        { ...userInfo, type: 'refresh' },
+        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
+      ),
+    ]);
+
+    // Guardar nuevo refresh token en la misma familia
+    await this.refreshTokenService.save({
+      token: newRefreshToken,
+      sub: record.sub,
+      type: 'student',
+      expiresIn: this.refreshExpiresIn,
+      familyId: record.familyId,
+    });
 
     return {
       access_token: newAccessToken,
-      refresh_token: refreshRequestDto.refresh_token,
+      refresh_token: newRefreshToken,
       token_type: 'Bearer',
       expires_in: this.parseExpiresIn(this.accessExpiresIn),
     };
+  }
+
+  async logout(dto: LogoutRequestDto): Promise<void> {
+    await this.refreshTokenService.revokeFamily(dto.refresh_token);
   }
 
   private parseExpiresIn(value: string): number {
@@ -176,7 +225,14 @@ export class AuthService implements IAuthService {
   }
 
   getCleanUserInfo(payload: JwtPayloadDto): UserInfoOauthDto {
-    const { type: _, iat: __, exp: ___, ...userInfo } = payload;
-    return userInfo;
+    return {
+      sub: payload.sub,
+      nombre: payload.nombre,
+      apellido: payload.apellido,
+      legajo: payload.legajo,
+      carrera: payload.carrera,
+      email: payload.email,
+      grupo: payload.grupo,
+    };
   }
 }

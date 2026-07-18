@@ -14,6 +14,6 @@ export class CreateOAuthClientDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(5)
-  @IsUrl({ require_tld: false }, { each: true })
+  @IsUrl({ require_tld: false, require_protocol: true, protocols: ['http', 'https'] }, { each: true })
   redirectUris!: string[];
 }

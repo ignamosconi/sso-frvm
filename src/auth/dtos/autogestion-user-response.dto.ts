@@ -5,7 +5,7 @@ export class AutogestionUserResponseDto {
   readonly grupo!: {
     id: number;
     nombre: string;
-    permisos: any[];
+    permisos: unknown[];
     urlCliente: string;
   };
   readonly persona!: {
@@ -25,8 +25,8 @@ export class AutogestionUserResponseDto {
         importeInscripcion: number;
       };
     } | null;
-    docente: any;
-    director: any;
+    docente: unknown;
+    director: unknown;
     telefonoInternacional: string | null;
   };
   readonly hashActual!: string;

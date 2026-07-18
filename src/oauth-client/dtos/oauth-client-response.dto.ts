@@ -10,8 +10,8 @@ export class OAuthClientResponseDto {
   @ApiProperty({ example: ['http://localhost:4000/callback', 'https://miapp.com/callback'] })
   readonly redirectUris!: string[];
 
-  @ApiProperty({ example: '57df647b26106facbd7bf95bb728dcb62a332123a080cd8b649596e92dfeb089' })
-  readonly clientSecret!: string;
+  @ApiProperty({ example: true, description: 'false = cliente suspendido, no puede autenticar usuarios' })
+  readonly isActive!: boolean;
 
   @ApiProperty()
   readonly createdAt!: Date;

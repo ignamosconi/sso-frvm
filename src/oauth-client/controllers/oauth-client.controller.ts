@@ -5,6 +5,7 @@ import type { IOAuthClientService } from '../services/oauth-client.service.inter
 import { CreateOAuthClientDto } from '../dtos/create-oauth-client.dto.js';
 import { UpdateOAuthClientDto } from '../dtos/update-oauth-client.dto.js';
 import { OAuthClientResponseDto } from '../dtos/oauth-client-response.dto.js';
+import { OAuthClientCreatedResponseDto } from '../dtos/oauth-client-created-response.dto.js';
 import { OAuthClientInfoDto } from '../dtos/oauth-client-info.dto.js';
 import { SendCredentialsEmailDto } from '../dtos/send-credentials-email.dto.js';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard.js';
@@ -48,11 +49,11 @@ export class OAuthClientController implements IOAuthClientController {
   }
 
   @ApiOperation({ summary: 'Crear nuevo cliente OAuth' })
-  @ApiResponse({ status: 201, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 201, type: OAuthClientCreatedResponseDto, description: 'El plainSecret solo es visible en esta respuesta.' })
   @ApiBearerAuth('admin-jwt')
   @UseGuards(AdminJwtGuard)
   @Post()
-  create(@Body() dto: CreateOAuthClientDto): Promise<OAuthClientResponseDto> {
+  create(@Body() dto: CreateOAuthClientDto): Promise<OAuthClientCreatedResponseDto> {
     return this.oauthClientService.create(dto);
   }
 
@@ -80,12 +81,12 @@ export class OAuthClientController implements IOAuthClientController {
   }
 
   @ApiOperation({ summary: 'Regenerar client secret' })
-  @ApiResponse({ status: 201, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 201, type: OAuthClientCreatedResponseDto, description: 'El plainSecret solo es visible en esta respuesta.' })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   @ApiBearerAuth('admin-jwt')
   @UseGuards(AdminJwtGuard)
   @Post(':id/regenerate-secret')
-  regenerateSecret(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+  regenerateSecret(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientCreatedResponseDto> {
     return this.oauthClientService.regenerateSecret(id);
   }
 
@@ -100,6 +101,26 @@ export class OAuthClientController implements IOAuthClientController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SendCredentialsEmailDto,
   ): Promise<void> {
-    return this.oauthClientService.sendCredentialsByEmail(id, dto.to);
+    return this.oauthClientService.sendCredentialsByEmail(id, dto.to, dto.plainSecret);
+  }
+
+  @ApiOperation({ summary: 'Suspender cliente OAuth', description: 'El cliente no podrá autenticar usuarios hasta que sea reactivado.' })
+  @ApiResponse({ status: 200, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Patch(':id/suspend')
+  suspend(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.suspend(id);
+  }
+
+  @ApiOperation({ summary: 'Activar cliente OAuth suspendido' })
+  @ApiResponse({ status: 200, type: OAuthClientResponseDto })
+  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiBearerAuth('admin-jwt')
+  @UseGuards(AdminJwtGuard)
+  @Patch(':id/activate')
+  activate(@Param('id', ParseIntPipe) id: number): Promise<OAuthClientResponseDto> {
+    return this.oauthClientService.activate(id);
   }
 }

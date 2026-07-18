@@ -6,12 +6,14 @@ import { OAuthClientEntity } from './entities/oauth-client.entity.js';
 import { OAuthClientService } from './services/oauth-client.service.js';
 import { OAuthClientController } from './controllers/oauth-client.controller.js';
 import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard.js';
+import { CredentialTokenModule } from '../credential-token/credential-token.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([OAuthClientEntity]),
     ConfigModule,
     JwtModule.register({}),
+    CredentialTokenModule,
   ],
   controllers: [OAuthClientController],
   providers: [

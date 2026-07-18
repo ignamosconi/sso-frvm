@@ -1,0 +1,76 @@
+name: CI — Backend
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Lint, Build y Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Tests unitarios
+        run: npm run test:cov
+        env:
+          # Variables mínimas para que los servicios arranquen en test
+          NODE_ENV: test
+          PORT: 3000
+          AUTH_ROUTE_PATH: sso
+          CODE_TTL_MS: '120000'
+          CREDENTIAL_TOKEN_TTL_MS: '86400000'
+          CREDENTIAL_ENCRYPTION_KEY: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+          TOTP_ENCRYPTION_KEY: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+          AUTOGESTION_BASE_URL: 'https://webservice.frvm.utn.edu.ar/autogestion'
+          ADMIN_PANEL_URL: 'http://localhost:5173'
+          SSO_BASE_URL: 'http://localhost:3000'
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: sso_frvm
+          JWT_ACCESS_SECRET: 'test-access-secret-suficientemente-largo'
+          JWT_REFRESH_SECRET: 'test-refresh-secret-suficientemente-largo'
+          JWT_ACCESS_EXPIRES_IN: '15m'
+          JWT_REFRESH_EXPIRES_IN: '1d'
+          JWT_ADMIN_ACCESS_SECRET: 'test-admin-access-secret-suficientemente-largo'
+          JWT_ADMIN_REFRESH_SECRET: 'test-admin-refresh-secret-suficientemente-largo'
+          JWT_ADMIN_ACCESS_EXPIRES_IN: '15m'
+          JWT_ADMIN_REFRESH_EXPIRES_IN: '1d'
+          ADMIN_USERNAME_SEEDER: admin
+          ADMIN_PASSWORD_SEEDER: 'password-seeder-test'
+          SWAGGER_USER: swagger-user-test
+          SWAGGER_PASSWORD: 'swagger-password-test'
+          MAIL_HOST: smtp.test.com
+          MAIL_PORT: '587'
+          MAIL_USER: test@test.com
+          MAIL_PASS: test-pass
+          MAIL_FROM: test@test.com
+
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-backend
+          path: coverage/
+          retention-days: 7
