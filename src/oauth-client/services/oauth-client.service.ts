@@ -183,7 +183,7 @@ export class OAuthClientService implements IOAuthClientService {
           '── Cómo integrar tu app con el SSO ────────────────────',
           '',
           '1. Abrí un popup al login del SSO (puede ser con theme=light o theme=dark):',
-          `   ${ssoUrl}/sso/login?client_id=${client.id}&redirect_uri=TU_REDIRECT_URI&state=VALOR_ALEATORIO&theme=light `,
+          `   ${ssoUrl}/sso/login?client_id=${client.id}&redirect_uri=TU_REDIRECT_URI&state=VALOR_ALEATORIO&theme=dark `,
           '',
           '2. Escuchá el postMessage en tu app:',
           '   window.addEventListener("message", (event) => {',

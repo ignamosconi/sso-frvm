@@ -56,7 +56,7 @@ function renderSuccess(data) {
 
     <div class="alert">
       <span class="alert-icon">⚠️</span>
-      <span>Este link es de <strong>un solo uso</strong> y ya no funcionará si recargás la página. Guardá el Client Secret ahora.</span>
+      <span>Este link es de <strong>un solo uso</strong> y ya no funcionará si recargás la página.</span>
     </div>
 
     <hr>
