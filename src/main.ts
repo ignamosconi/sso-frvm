@@ -161,9 +161,40 @@ async function bootstrap() {
   const seeder = app.get(AdminSeeder);
   await seeder.seed();
 
+  //endpoint /health para chequear si el SSO está activo.
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  //endpoint /health/autogestión para chequear si autogestión está activa
+  httpAdapter.get('/health/autogestion', async (_req: Request, res: Response) => {
+    try {
+      const { default: axios } = await import('axios');
+      // Replicamos exactamente la llamada que hace auth.service.ts al login de Autogestión.
+      // Mandamos credenciales vacías — Autogestión va a responder con un error HTTP
+      // (401 o similar), pero eso confirma que el servidor está vivo y respondiendo.
+      // Solo un error de red (timeout, ECONNREFUSED) significa que está caído.
+      await axios.post(
+        `${process.env.AUTOGESTION_BASE_URL}/login`,
+        {},
+        {
+          headers: { nick: '', password: '' },
+          timeout: 5000,
+        }
+      );
+      // Si por alguna razón devuelve 200 con credenciales vacías, igual está vivo
+      res.status(200).json({ status: 'ok' });
+    } catch (err) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response) {
+        // Cualquier respuesta HTTP (401, 400, 403, 500...) = servidor vivo
+        res.status(200).json({ status: 'ok' });
+      } else {
+        // Sin respuesta = error de red = servidor caído
+        res.status(503).json({ status: 'down' });
+      }
+    }
   });
 
   await app.listen(port);
