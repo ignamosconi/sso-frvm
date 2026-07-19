@@ -182,8 +182,8 @@ export class OAuthClientService implements IOAuthClientService {
           '',
           '── Cómo integrar tu app con el SSO ────────────────────',
           '',
-          '1. Abrí un popup al login del SSO:',
-          `   ${ssoUrl}/sso/login?client_id=${client.id}&redirect_uri=TU_REDIRECT_URI&state=VALOR_ALEATORIO`,
+          '1. Abrí un popup al login del SSO (puede ser con theme=light o theme=dark):',
+          `   ${ssoUrl}/sso/login?client_id=${client.id}&redirect_uri=TU_REDIRECT_URI&state=VALOR_ALEATORIO&theme=light `,
           '',
           '2. Escuchá el postMessage en tu app:',
           '   window.addEventListener("message", (event) => {',
@@ -213,8 +213,9 @@ export class OAuthClientService implements IOAuthClientService {
           '── Notas importantes ───────────────────────────────────',
           '• Guardá el Client Secret en tu backend, nunca en el frontend.',
           '• El code es de un solo uso y expira en 2 minutos.',
+          '• El state lo generás aleatoriamente vos. Comprobá en tu app que el sso devuelva el mismo valor',
           '• Si perdés el Client Secret, pedile al administrador que lo regenere.',
-          '• Para más detalles consultá el README del repositorio del SSO.',
+          '• Para más detalles consultá https://github.com/ignamosconi/sso-frvm/',
         ].join('\n'),
       });
     } catch {
