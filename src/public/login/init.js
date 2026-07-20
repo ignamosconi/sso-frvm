@@ -52,3 +52,12 @@ window.addEventListener('pageshow', (event) => {
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginForm').reset();
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('loginForm');
+
+  if (form) {
+    form.addEventListener('submit', executeLogin);
+    form.reset();
+  }
+});
