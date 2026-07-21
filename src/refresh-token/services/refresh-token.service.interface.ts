@@ -7,6 +7,7 @@ export interface SaveRefreshTokenParams {
   type: 'student' | 'admin';
   expiresIn: string;
   familyId?: string;
+  sessionExpiresAt?: Date | null; // heredado en rotaciones, null para admins
 }
 
 

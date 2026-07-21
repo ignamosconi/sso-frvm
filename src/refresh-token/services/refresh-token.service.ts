@@ -4,7 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { RefreshTokenEntity } from '../entities/refresh-token.entity.js';
-import { IRefreshTokenService } from './refresh-token.service.interface.js';
+import { IRefreshTokenService, SaveRefreshTokenParams } from './refresh-token.service.interface.js';
 
 @Injectable()
 export class RefreshTokenService implements IRefreshTokenService{
@@ -32,24 +32,19 @@ export class RefreshTokenService implements IRefreshTokenService{
   }
 
   // Guarda un nuevo refresh token. Si no se pasa familyId, inicia una nueva familia.
-  async save(params: {
-    token: string;
-    sub: string;
-    type: 'student' | 'admin';
-    expiresIn: string;
-    familyId?: string;
-  }): Promise<void> {
+  async save(params: SaveRefreshTokenParams): Promise<void> {
     await this.repo.save({
       tokenHash: this.hash(params.token),
       familyId: params.familyId ?? randomUUID(),
       sub: params.sub,
       type: params.type,
       expiresAt: this.toDate(params.expiresIn),
+      sessionExpiresAt: params.sessionExpiresAt ?? null,
     });
   }
 
   // Valida el token y devuelve el registro. Maneja detección de reutilización.
-    async consume(token: string): Promise<RefreshTokenEntity> {
+  async consume(token: string): Promise<RefreshTokenEntity> {
     const tokenHash = this.hash(token);
 
     // Atómicamente marca el token como usado solo si todavía no lo fue
@@ -82,12 +77,18 @@ export class RefreshTokenService implements IRefreshTokenService{
 
     const raw = result.raw as RefreshTokenEntity[];
     const record = raw[0];
+    const now = new Date();
 
-    // Verificar expiración después del UPDATE (el índice no filtra por fecha)
-    if (new Date(record.expiresAt) < new Date()) {
-      // Revocar para no dejar el token en estado "usado pero expirado" sin revocar
+    // Verificar expiración por inactividad
+    if (new Date(record.expiresAt) < now) {
       await this.repo.update({ familyId: record.familyId }, { revoked: true });
       throw new UnauthorizedException('Refresh token expirado.');
+    }
+
+    // Verificar expiración absoluta de sesión (solo tokens de alumno)
+    if (record.sessionExpiresAt && new Date(record.sessionExpiresAt) < now) {
+      await this.repo.update({ familyId: record.familyId }, { revoked: true });
+      throw new UnauthorizedException('La sesión expiró. Volvé a iniciar sesión.');
     }
 
     return record;
