@@ -29,6 +29,12 @@ export class RefreshTokenEntity {
   @Column()
   expiresAt!: Date;
 
+  // Límite absoluto de la sesión. Se fija al crear el primer refresh token
+  // de la familia (al canjear el authorization code) y se hereda en cada
+  // rotación sin modificarse. NULL para tokens de admin (sin límite absoluto).
+  @Column({ nullable: true, type: 'timestamp' })
+  sessionExpiresAt!: Date | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

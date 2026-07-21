@@ -26,6 +26,7 @@ export class AuthService implements IAuthService {
   private readonly refreshSecret: string;
   private readonly accessExpiresIn: string;
   private readonly refreshExpiresIn: string;
+  private readonly sessionMaxDurationMs: number;
 
   constructor(
     private readonly httpService: HttpService,
@@ -43,6 +44,9 @@ export class AuthService implements IAuthService {
     this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     this.accessExpiresIn = this.configService.getOrThrow<string>('JWT_ACCESS_EXPIRES_IN');
     this.refreshExpiresIn = this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN');
+    this.sessionMaxDurationMs = this.parseExpiresIn(
+      this.configService.getOrThrow<string>('JWT_REFRESH_SESSION_MAX_DURATION'),
+    ) * 1000;
   }
 
   async validateAndGetUserInfo(loginDto: LoginRequestDto): Promise<UserInfoOauthDto> {
@@ -135,12 +139,16 @@ export class AuthService implements IAuthService {
       ),
     ]);
 
-    // Guardar refresh token en DB (inicio de nueva familia)
+    // sessionExpiresAt: límite absoluto de la sesión, fijado al crear la familia.
+    // Se hereda en cada rotación sin modificarse.
+    const sessionExpiresAt = new Date(Date.now() + this.sessionMaxDurationMs);
+
     await this.refreshTokenService.save({
       token: refresh_token,
       sub: entry.userInfo.sub,
       type: 'student',
       expiresIn: this.refreshExpiresIn,
+      sessionExpiresAt,
     });
 
     return {
@@ -152,22 +160,25 @@ export class AuthService implements IAuthService {
   }
 
   async refreshTokens(refreshRequestDto: RefreshRequestDto): Promise<TokenResponseDto> {
-    // Verificar firma JWT primero
     let storedPayload: JwtPayloadDto;
     try {
       storedPayload = await this.jwtService.verifyAsync<JwtPayloadDto>(
         refreshRequestDto.refresh_token,
         { secret: this.refreshSecret },
       );
-    } catch {
-      throw new UnauthorizedException('Refresh token inválido o expirado.');
+    } catch (err) {
+      const jwtErr = err as { name?: string };
+      if (jwtErr?.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('La sesión expiró. Volvé a iniciar sesión.');
+      }
+      throw new UnauthorizedException('Refresh token inválido o revocado.');
     }
 
     if (storedPayload.type !== 'refresh') {
       throw new UnauthorizedException('El token proporcionado no es un refresh token.');
     }
 
-    // Consumir en DB (detecta reutilización y revoca familia si es necesario)
+    // consume verifica inactividad Y sessionExpiresAt antes de retornar
     const record = await this.refreshTokenService.consume(refreshRequestDto.refresh_token);
 
     const userInfo: Omit<JwtPayloadDto, 'type' | 'iat' | 'exp'> = {
@@ -180,6 +191,16 @@ export class AuthService implements IAuthService {
       grupo: storedPayload.grupo,
     };
 
+    // newExpiresAt = MIN(now + inactivityDuration, sessionExpiresAt)
+    // Esto evita que la rotación extienda la sesión más allá del límite absoluto.
+    const inactivityExpiry = new Date(Date.now() + this.parseExpiresIn(this.refreshExpiresIn) * 1000);
+    const effectiveExpiry = record.sessionExpiresAt
+      ? new Date(Math.min(inactivityExpiry.getTime(), record.sessionExpiresAt.getTime()))
+      : inactivityExpiry;
+
+    // El nuevo expiresIn para el JWT se calcula desde el effectiveExpiry
+    const newRefreshExpiresInSeconds = Math.floor((effectiveExpiry.getTime() - Date.now()) / 1000);
+
     const [newAccessToken, newRefreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { ...userInfo, type: 'access' },
@@ -187,17 +208,20 @@ export class AuthService implements IAuthService {
       ),
       this.jwtService.signAsync(
         { ...userInfo, type: 'refresh' },
-        { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
+        // El JWT del refresh expira cuando effectiveExpiry lo diga
+        { secret: this.refreshSecret, expiresIn: newRefreshExpiresInSeconds } as JwtSignOptions,
       ),
     ]);
 
-    // Guardar nuevo refresh token en la misma familia
     await this.refreshTokenService.save({
       token: newRefreshToken,
       sub: record.sub,
       type: 'student',
-      expiresIn: this.refreshExpiresIn,
+      // Pasamos el expiresIn como número de segundos — toDate lo maneja
+      expiresIn: `${newRefreshExpiresInSeconds}s`,
       familyId: record.familyId,
+      // Heredar sessionExpiresAt del token padre — nunca se extiende
+      sessionExpiresAt: record.sessionExpiresAt,
     });
 
     return {
