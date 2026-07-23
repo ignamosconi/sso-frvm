@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -148,6 +148,15 @@ export class AdminAuthService implements IAdminAuthService {
 
     const admin = await this.adminRepository.findOne({ where: { id: sub } });
     if (!admin) throw new UnauthorizedException('Admin no encontrado.');
+
+    // Si el admin ya tiene 2FA activo, el setup no puede repetirse con solo
+    // el pending_token del login. Debe pasar por /2fa/reset (autenticado con
+    // access token + password) antes de poder configurar un nuevo secret.
+    if (admin.totpEnabled) {
+      throw new ForbiddenException(
+        'El 2FA ya está configurado. Para regenerarlo usá /admin/auth/2fa/reset.',
+      );
+    }
 
     // Generar nuevo secret TOTP
     const plainSecret = authenticator.generateSecret();
