@@ -98,7 +98,12 @@ function attachCopyListeners(card) {
 async function loadCredentials() {
   const card = document.getElementById('card');
   try {
-    const res = await fetch(`/credentials/${token}/data`);
+    // POST en lugar de GET para evitar que servicios de preview de email
+    // consuman el token automáticamente al inspeccionar el link del correo.
+    const res = await fetch(`/credentials/${token}/consume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     const data = await res.json();
 
     if (!res.ok) {

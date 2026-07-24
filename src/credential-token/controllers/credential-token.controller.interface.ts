@@ -3,5 +3,5 @@ import { CredentialDataResponseDto } from '../dtos/credential-data-response.dto.
 
 export interface ICredentialTokenController {
   serveCredentialsPage(token: string, res: Response): void;
-  getCredentialData(token: string): Promise<CredentialDataResponseDto>;
+  consumeCredentialData(token: string): Promise<CredentialDataResponseDto>;
 }

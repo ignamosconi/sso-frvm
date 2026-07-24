@@ -18,6 +18,7 @@ import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 import { JwtSignOptions } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -134,7 +135,7 @@ export class AuthService implements IAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { ...entry.userInfo, type: 'refresh' },
+        { ...entry.userInfo, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
@@ -149,6 +150,7 @@ export class AuthService implements IAuthService {
       type: 'student',
       expiresIn: this.refreshExpiresIn,
       sessionExpiresAt,
+      clientId,
     });
 
     return {
@@ -207,8 +209,7 @@ export class AuthService implements IAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { ...userInfo, type: 'refresh' },
-        // El JWT del refresh expira cuando effectiveExpiry lo diga
+        { ...userInfo, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: newRefreshExpiresInSeconds } as JwtSignOptions,
       ),
     ]);
@@ -217,11 +218,10 @@ export class AuthService implements IAuthService {
       token: newRefreshToken,
       sub: record.sub,
       type: 'student',
-      // Pasamos el expiresIn como número de segundos — toDate lo maneja
-      expiresIn: `${newRefreshExpiresInSeconds}s`,
+      expiresIn: `${newRefreshExpiresInSeconds}s`,       // Pasamos el expiresIn como número de segundos — toDate lo maneja
       familyId: record.familyId,
-      // Heredar sessionExpiresAt del token padre — nunca se extiende
-      sessionExpiresAt: record.sessionExpiresAt,
+      sessionExpiresAt: record.sessionExpiresAt,       // Heredar sessionExpiresAt del token padre — nunca se extiende
+      clientId: record.clientId ?? undefined,         // Heredar el clientId del token padre para mantener la trazabilidad de la sesión.
     });
 
     return {

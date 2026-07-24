@@ -101,7 +101,7 @@ export class OAuthClientController implements IOAuthClientController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SendCredentialsEmailDto,
   ): Promise<void> {
-    return this.oauthClientService.sendCredentialsByEmail(id, dto.to, dto.plainSecret);
+    return this.oauthClientService.sendCredentialsByEmail(id, dto.to);
   }
 
   @ApiOperation({ summary: 'Suspender cliente OAuth', description: 'El cliente no podrá autenticar usuarios hasta que sea reactivado.' })

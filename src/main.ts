@@ -20,6 +20,8 @@ const KNOWN_WEAK_SECRETS = new Set([
   'cambia_esta_password_min_8_caracteres',
   'cambia_esta_password_swagger',
   'admin',   // SWAGGER_USER por defecto
+  'cambia_esta_password_redis',
+  
 ]);
 
 function assertSecrets(configService: ConfigService): void {
@@ -34,6 +36,7 @@ function assertSecrets(configService: ConfigService): void {
     configService.get<string>('ADMIN_PASSWORD_SEEDER') ?? '',
     configService.get<string>('SWAGGER_PASSWORD') ?? '',
     configService.get<string>('SWAGGER_USER') ?? '',
+    configService.get<string>('REDIS_PASSWORD') ?? '',
   ];
 
   for (const secret of secretsToCheck) {
@@ -82,45 +85,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
 
-
-  app.use(helmet({
-    //Evita que el popup de login y la página de credenciales sean embebidos en iframes de otros orígenes (clickjacking)
-    frameguard: { action: 'deny' },
-    // Fuerza HTTPS en producción indicándole al browser que recuerde conectarse solo por HTTPS por 1 año
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-    },
-    //Evita que el browser infiera el tipo de contenido
-    noSniff: true,
-    //Desactiva el header X-Powered-By (no revelar que usamos Express)
-    hidePoweredBy: true,
-    //CSP básica: solo recursos propios + Google Fonts (usados en login y credentials)
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:'],
-        scriptSrc: ["'self'"],
-        connectSrc: ["'self'"],
-        frameAncestors: ["'none'"],
-      },
-    },
-  }));
-
-  app.enableCors({
-    origin: process.env.ADMIN_PANEL_URL ?? 'http://localhost:5173',
-    credentials: true,
-  });
-
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
-
   const configService = app.get(ConfigService);
-
-  // Falla al arrancar si hay secretos por defecto en producción
-  assertSecrets(configService);
-
 
   // Falla al arrancar si hay secretos por defecto en producción
   assertSecrets(configService);
