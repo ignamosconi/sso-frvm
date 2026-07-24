@@ -149,6 +149,7 @@ export class AuthService implements IAuthService {
       type: 'student',
       expiresIn: this.refreshExpiresIn,
       sessionExpiresAt,
+      clientId,
     });
 
     return {
@@ -217,11 +218,19 @@ export class AuthService implements IAuthService {
       token: newRefreshToken,
       sub: record.sub,
       type: 'student',
-      // Pasamos el expiresIn como número de segundos — toDate lo maneja
-      expiresIn: `${newRefreshExpiresInSeconds}s`,
+      expiresIn: `${newRefreshExpiresInSeconds}s`,    
       familyId: record.familyId,
-      // Heredar sessionExpiresAt del token padre — nunca se extiende
-      sessionExpiresAt: record.sessionExpiresAt,
+      sessionExpiresAt: record.sessionExpiresAt,      
+    });
+
+    await this.refreshTokenService.save({
+      token: newRefreshToken,
+      sub: record.sub,
+      type: 'student',
+      expiresIn: `${newRefreshExpiresInSeconds}s`,       // Pasamos el expiresIn como número de segundos — toDate lo maneja
+      familyId: record.familyId,
+      sessionExpiresAt: record.sessionExpiresAt,       // Heredar sessionExpiresAt del token padre — nunca se extiende
+      clientId: record.clientId ?? undefined,         // Heredar el clientId del token padre para mantener la trazabilidad de la sesión.
     });
 
     return {

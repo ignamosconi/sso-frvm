@@ -14,6 +14,7 @@ import { UpdateOAuthClientDto } from '../dtos/update-oauth-client.dto.js';
 import { OAuthClientResponseDto } from '../dtos/oauth-client-response.dto.js';
 import { OAuthClientCreatedResponseDto } from '../dtos/oauth-client-created-response.dto.js';
 import { OAuthClientInfoDto } from '../dtos/oauth-client-info.dto.js';
+import type { IRefreshTokenService } from 'src/refresh-token/services/refresh-token.service.interface.js';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -21,13 +22,15 @@ const BCRYPT_ROUNDS = 10;
 export class OAuthClientService implements IOAuthClientService {
   private readonly transporter: nodemailer.Transporter;
 
-  constructor(
-    @InjectRepository(OAuthClientEntity)
-    private readonly clientRepository: Repository<OAuthClientEntity>,
-    private readonly configService: ConfigService,
-    @Inject('ICredentialTokenService')
-    private readonly credentialTokenService: ICredentialTokenService,
-  ) {
+    constructor(
+      @InjectRepository(OAuthClientEntity)
+      private readonly clientRepository: Repository<OAuthClientEntity>,
+      private readonly configService: ConfigService,
+      @Inject('ICredentialTokenService')
+      private readonly credentialTokenService: ICredentialTokenService,
+      @Inject('IRefreshTokenService')
+      private readonly refreshTokenService: IRefreshTokenService,
+    ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.getOrThrow<string>('MAIL_HOST'),
       port: this.configService.getOrThrow<number>('MAIL_PORT'),
@@ -109,7 +112,14 @@ export class OAuthClientService implements IOAuthClientService {
   async remove(id: number): Promise<void> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
-    await this.clientRepository.remove(client);
+
+    // Revocar todas las sesiones activas de alumnos antes de eliminar el cliente.
+    // LIMITACIÓN CONOCIDA: los access tokens emitidos para esta app seguirán siendo
+    // válidos hasta su vencimiento (JWT_ACCESS_EXPIRES_IN, por defecto 15 minutos).
+    await this.clientRepository.manager.transaction(async (manager) => {
+      await this.refreshTokenService.revokeAllForClient(id, manager);
+      await manager.remove(client);
+    });
   }
 
   async regenerateSecret(id: number): Promise<OAuthClientCreatedResponseDto> {
@@ -245,6 +255,12 @@ export class OAuthClientService implements IOAuthClientService {
   async suspend(id: number): Promise<OAuthClientResponseDto> {
     const client = await this.clientRepository.findOne({ where: { id } });
     if (!client) throw new NotFoundException(`Cliente OAuth con id ${id} no encontrado.`);
+
+    // Revocar todas las sesiones activas de alumnos al suspender el cliente.
+    // LIMITACIÓN CONOCIDA: los access tokens emitidos para esta app seguirán siendo
+    // válidos hasta su vencimiento (JWT_ACCESS_EXPIRES_IN, por defecto 15 minutos).
+    await this.refreshTokenService.revokeAllForClient(id);
+
     client.isActive = false;
     const saved = await this.clientRepository.save(client);
     return this.toResponseDto(saved);

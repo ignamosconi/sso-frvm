@@ -7,7 +7,7 @@ import { RefreshTokenEntity } from '../entities/refresh-token.entity.js';
 import { IRefreshTokenService, SaveRefreshTokenParams } from './refresh-token.service.interface.js';
 
 @Injectable()
-export class RefreshTokenService implements IRefreshTokenService{
+export class RefreshTokenService implements IRefreshTokenService {
 
   constructor(
     @InjectRepository(RefreshTokenEntity)
@@ -40,6 +40,7 @@ export class RefreshTokenService implements IRefreshTokenService{
       type: params.type,
       expiresAt: this.toDate(params.expiresIn),
       sessionExpiresAt: params.sessionExpiresAt ?? null,
+      clientId: params.clientId ?? null,
     });
   }
 
@@ -103,13 +104,23 @@ export class RefreshTokenService implements IRefreshTokenService{
   }
 
   async revokeAllForSub(sub: string, manager?: EntityManager): Promise<void> {
-    const repo = manager
-      ? manager.getRepository(RefreshTokenEntity)
-      : this.repo;
+    const repo = manager ? manager.getRepository(RefreshTokenEntity) : this.repo;
     await repo.update({ sub, revoked: false }, { revoked: true });
   }
 
-  // Limpieza periódica de tokens viejos (llamar desde un cron si se quiere)
+  // Revoca todos los refresh tokens activos de alumnos asociados a la app OAuth.
+  // LIMITACIÓN CONOCIDA: los access tokens emitidos para esa app seguirán siendo
+  // válidos hasta su vencimiento natural (JWT_ACCESS_EXPIRES_IN, por defecto 15 minutos).
+  // Se asume esta ventana como aceptable para evitar mantener una blacklist de JWT
+  // o consultar el estado del cliente en cada request.
+  async revokeAllForClient(clientId: number, manager?: EntityManager): Promise<void> {
+    const repo = manager ? manager.getRepository(RefreshTokenEntity) : this.repo;
+    await repo.update(
+      { clientId, revoked: false },
+      { revoked: true },
+    );
+  }
+
   async purgeExpired(): Promise<void> {
     await this.repo
       .createQueryBuilder()

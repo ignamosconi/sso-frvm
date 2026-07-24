@@ -7,6 +7,7 @@ import { OAuthClientService } from './services/oauth-client.service.js';
 import { OAuthClientController } from './controllers/oauth-client.controller.js';
 import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard.js';
 import { CredentialTokenModule } from '../credential-token/credential-token.module.js';
+import { RefreshTokenModule } from '../refresh-token/refresh-token.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CredentialTokenModule } from '../credential-token/credential-token.modu
     ConfigModule,
     JwtModule.register({}),
     CredentialTokenModule,
+    RefreshTokenModule,
   ],
   controllers: [OAuthClientController],
   providers: [
