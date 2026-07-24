@@ -35,6 +35,7 @@ describe('AdminAuthService', () => {
   let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
   let mockJwtService: jest.Mocked<Partial<JwtService>>;
   let mockRefreshTokenService: jest.Mocked<Record<string, jest.Mock>>;
+  let mockPendingChallengeService: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {
@@ -53,12 +54,25 @@ describe('AdminAuthService', () => {
       revokeFamily: jest.fn().mockResolvedValue(undefined),
     };
 
+    // Mock del PendingChallengeService — simula Redis sin necesitar conexión real.
+    // create: registra el challenge exitosamente.
+    // verify: valida el challenge exitosamente (no lanza).
+    // consume: consume el challenge exitosamente (no lanza).
+    // recordAttempt: por defecto simula código correcto.
+    mockPendingChallengeService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      verify: jest.fn().mockResolvedValue({ adminId: 'admin-uuid' }),
+      consume: jest.fn().mockResolvedValue({ adminId: 'admin-uuid' }),
+      recordAttempt: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminAuthService,
         { provide: getRepositoryToken(AdminEntity), useValue: mockRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: 'IRefreshTokenService', useValue: mockRefreshTokenService },
+        { provide: 'IPendingChallengeService', useValue: mockPendingChallengeService },
         {
           provide: ConfigService,
           useValue: {
@@ -69,6 +83,7 @@ describe('AdminAuthService', () => {
                 JWT_ADMIN_ACCESS_EXPIRES_IN: '15m',
                 JWT_ADMIN_REFRESH_EXPIRES_IN: '1d',
                 TOTP_ENCRYPTION_KEY: TOTP_KEY,
+                PENDING_2FA_TTL_MS: '180000',
               };
               if (key in map) return map[key];
               throw new Error(`Config key not found: ${key}`);
@@ -132,7 +147,12 @@ describe('AdminAuthService', () => {
     });
 
     it('debería lanzar UnauthorizedException si el admin no tiene 2FA configurado', async () => {
-      mockJwtService.verifyAsync = jest.fn().mockResolvedValue({ sub: 'admin-uuid', type: 'pending-2fa' });
+      mockJwtService.verifyAsync = jest.fn().mockResolvedValue({
+        sub: 'admin-uuid',
+        jti: 'test-jti',
+        purpose: '2fa-confirm',
+        type: 'pending-2fa',
+      });
       mockRepo.findOne.mockResolvedValue(makeAdmin({ totpEnabled: false }));
 
       await expect(service.validate2fa({ pending_token: 'valid', totp_code: '123456' }))
