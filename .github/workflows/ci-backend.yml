@@ -66,6 +66,12 @@ jobs:
           MAIL_USER: test@test.com
           MAIL_PASS: test-pass
           MAIL_FROM: test@test.com
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+          REDIS_PASSWORD: ''
+          PENDING_2FA_TTL_MS: '180000'
+          PENDING_2FA_MAX_ATTEMPTS: '5'
+          JWT_REFRESH_SESSION_MAX_DURATION: '3d'
 
       - name: Subir reporte de cobertura
         uses: actions/upload-artifact@v4
