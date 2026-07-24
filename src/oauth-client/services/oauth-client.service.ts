@@ -1,3 +1,5 @@
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../redis/redis.module.js';
 import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -30,6 +32,8 @@ export class OAuthClientService implements IOAuthClientService {
       private readonly credentialTokenService: ICredentialTokenService,
       @Inject('IRefreshTokenService')
       private readonly refreshTokenService: IRefreshTokenService,
+      @Inject(REDIS_CLIENT)
+      private readonly redis: Redis,
     ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.getOrThrow<string>('MAIL_HOST'),
@@ -41,6 +45,30 @@ export class OAuthClientService implements IOAuthClientService {
       },
     });
   }
+
+
+  // TTL del pending secret alineado con CREDENTIAL_TOKEN_TTL_MS (el admin puede
+  // tardar en ir a enviar el email). Clave: pending-secret:{clientId}
+  private pendingSecretKey(clientId: number): string {
+    return `pending-secret:${clientId}`;
+  }
+
+  private async storePendingSecret(clientId: number, plainSecret: string): Promise<void> {
+    const ttlMs = this.configService.getOrThrow<number>('CREDENTIAL_TOKEN_TTL_MS');
+    await this.redis.set(this.pendingSecretKey(clientId), plainSecret, 'PX', ttlMs);
+  }
+
+  private async consumePendingSecret(clientId: number): Promise<string> {
+    // GETDEL: atómico, evita que dos requests paralelos lean el mismo secret.
+    const secret = await this.redis.getdel(this.pendingSecretKey(clientId));
+    if (!secret) {
+      throw new BadRequestException(
+        'El secret ya fue utilizado o expiró. Regenerá el secret para obtener uno nuevo.',
+      );
+    }
+    return secret;
+  }
+
 
   // Mapea entidad a DTO de respuesta general (sin secret)
   private toResponseDto(entity: OAuthClientEntity): OAuthClientResponseDto {
@@ -98,6 +126,9 @@ export class OAuthClientService implements IOAuthClientService {
     const clientSecret = await bcrypt.hash(plainSecret, BCRYPT_ROUNDS);
     const entity = this.clientRepository.create({ ...dto, clientSecret });
     const saved = await this.clientRepository.save(entity);
+    // Guardar el secret en Redis para que send-credentials lo recupere sin
+    // que el frontend tenga que reenviarlo.
+    await this.storePendingSecret(saved.id, plainSecret);
     return this.toCreatedResponseDto(saved, plainSecret);
   }
 
@@ -128,10 +159,17 @@ export class OAuthClientService implements IOAuthClientService {
     const plainSecret = randomBytes(32).toString('hex');
     client.clientSecret = await bcrypt.hash(plainSecret, BCRYPT_ROUNDS);
     const saved = await this.clientRepository.save(client);
+    // Sobrescribir el secret anterior en Redis si existía.
+    await this.storePendingSecret(saved.id, plainSecret);
     return this.toCreatedResponseDto(saved, plainSecret);
   }
 
-  async sendCredentialsByEmail(id: number, to: string, plainSecret: string): Promise<void> {
+  async sendCredentialsByEmail(id: number, to: string): Promise<void> {
+
+    // Recuperar el secret desde Redis — nunca lo recibimos del frontend.
+    // Si el secret ya fue consumido o expiró, el admin debe regenerarlo.
+    const plainSecret = await this.consumePendingSecret(id);
+
     const credentialTokenTtlMs = this.configService.getOrThrow<number>('CREDENTIAL_TOKEN_TTL_MS');
     const credentialTokenTtlHours = credentialTokenTtlMs / (1000 * 60 * 60);
 

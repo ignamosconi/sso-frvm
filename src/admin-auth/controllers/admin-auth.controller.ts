@@ -42,6 +42,7 @@ export class AdminAuthController implements IAdminAuthController {
   })
   @ApiResponse({ status: 201, type: Admin2faSetupResponseDto })
   @ApiResponse({ status: 401, description: 'pending_token inválido o expirado' })
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
   @Post('2fa/setup')
   setup2fa(@Body() dto: Admin2faSetupRequestDto): Promise<Admin2faSetupResponseDto> {
     return this.adminAuthService.setup2fa(dto);
@@ -53,6 +54,7 @@ export class AdminAuthController implements IAdminAuthController {
   })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 401, description: 'Código 2FA inválido o pending_token expirado' })
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
   @Post('2fa/confirm')
   confirm2fa(@Body() dto: Admin2faConfirmDto): Promise<TokenResponseDto> {
     return this.adminAuthService.confirm2fa(dto);
@@ -64,7 +66,7 @@ export class AdminAuthController implements IAdminAuthController {
   })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 401, description: 'Código 2FA inválido o pending_token expirado' })
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
   @Post('2fa/validate')
   validate2fa(@Body() dto: Admin2faValidateDto): Promise<TokenResponseDto> {
     return this.adminAuthService.validate2fa(dto);

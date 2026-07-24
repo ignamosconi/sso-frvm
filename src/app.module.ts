@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
+import { RedisModule } from './redis/redis.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { AdminAuthModule } from './admin-auth/admin-auth.module.js';
@@ -21,12 +22,11 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-
+    RedisModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, 'public'),
       serveRoot: '/app',
     }),
-
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -48,9 +48,7 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
         migrationsRun: true,
       }),
     }),
-
     TypeOrmModule.forFeature([AdminEntity]),
-
     ThrottlerModule.forRoot([
       {
         name: 'global',
@@ -58,7 +56,6 @@ import { AdminSeeder } from './database/seeders/admin.seeder.js';
         limit: 30,    // máximo 30 requests por IP en esa ventana (endpoints generales)
       },
     ]),
-
     AuthModule,
     AdminModule,
     AdminAuthModule,

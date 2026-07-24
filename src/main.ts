@@ -20,6 +20,8 @@ const KNOWN_WEAK_SECRETS = new Set([
   'cambia_esta_password_min_8_caracteres',
   'cambia_esta_password_swagger',
   'admin',   // SWAGGER_USER por defecto
+  'cambia_esta_password_redis',
+  
 ]);
 
 function assertSecrets(configService: ConfigService): void {
@@ -34,6 +36,7 @@ function assertSecrets(configService: ConfigService): void {
     configService.get<string>('ADMIN_PASSWORD_SEEDER') ?? '',
     configService.get<string>('SWAGGER_PASSWORD') ?? '',
     configService.get<string>('SWAGGER_USER') ?? '',
+    configService.get<string>('REDIS_PASSWORD') ?? '',
   ];
 
   for (const secret of secretsToCheck) {
