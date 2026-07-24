@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  UnauthorizedException,
-  ForbiddenException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
@@ -148,7 +142,7 @@ export class AdminAuthService implements IAdminAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { sub: admin.id, type: 'refresh' },
+        { sub: admin.id, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
@@ -334,7 +328,7 @@ export class AdminAuthService implements IAdminAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { sub: admin.id, type: 'refresh' },
+        { sub: admin.id, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);

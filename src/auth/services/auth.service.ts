@@ -18,6 +18,7 @@ import { AutogestionLoginResponseDto } from '../dtos/autogestion-login-response.
 import { AutogestionUserResponseDto } from '../dtos/autogestion-user-response.dto.js';
 import { JwtPayloadDto } from '../dtos/jwt-payload.dto.js';
 import { JwtSignOptions } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -134,7 +135,7 @@ export class AuthService implements IAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { ...entry.userInfo, type: 'refresh' },
+        { ...entry.userInfo, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn } as JwtSignOptions,
       ),
     ]);
@@ -208,20 +209,10 @@ export class AuthService implements IAuthService {
         { secret: this.accessSecret, expiresIn: this.accessExpiresIn } as JwtSignOptions,
       ),
       this.jwtService.signAsync(
-        { ...userInfo, type: 'refresh' },
-        // El JWT del refresh expira cuando effectiveExpiry lo diga
+        { ...userInfo, type: 'refresh', jti: randomUUID() },
         { secret: this.refreshSecret, expiresIn: newRefreshExpiresInSeconds } as JwtSignOptions,
       ),
     ]);
-
-    await this.refreshTokenService.save({
-      token: newRefreshToken,
-      sub: record.sub,
-      type: 'student',
-      expiresIn: `${newRefreshExpiresInSeconds}s`,    
-      familyId: record.familyId,
-      sessionExpiresAt: record.sessionExpiresAt,      
-    });
 
     await this.refreshTokenService.save({
       token: newRefreshToken,
