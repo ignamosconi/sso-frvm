@@ -13,7 +13,7 @@ export interface IOAuthClientService {
   update(id: number, dto: UpdateOAuthClientDto): Promise<OAuthClientResponseDto>;
   remove(id: number): Promise<void>;
   regenerateSecret(id: number): Promise<OAuthClientCreatedResponseDto>;
-  sendCredentialsByEmail(id: number, to: string, plainSecret: string): Promise<void>;
+  sendCredentialsByEmail(id: number, to: string): Promise<void>;
   suspend(id: number): Promise<OAuthClientResponseDto>;
   activate(id: number): Promise<OAuthClientResponseDto>;
 }

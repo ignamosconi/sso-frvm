@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsOptional } from 'class-validator';
+import { IsString, MinLength, IsOptional, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateAdminDto {
@@ -7,11 +7,13 @@ export class UpdateAdminDto {
   @IsOptional()
   @IsString()
   @MinLength(3)
+  @MaxLength(64)
   username?: string;
 
   @ApiPropertyOptional({ example: 'nueva_password', minLength: 8 })
   @IsOptional()
   @IsString()
   @MinLength(8)
+  @MaxLength(128)
   password?: string;
 }

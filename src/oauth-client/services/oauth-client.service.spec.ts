@@ -9,6 +9,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuthClientService } from './oauth-client.service.js';
 import { OAuthClientEntity } from '../entities/oauth-client.entity.js';
+import { REDIS_CLIENT } from '../../redis/redis.module.js';
 import * as bcrypt from 'bcrypt';
 
 function makeClient(overrides: Partial<OAuthClientEntity> = {}): OAuthClientEntity {
@@ -28,6 +29,8 @@ describe('OAuthClientService', () => {
   let service: OAuthClientService;
   let mockRepo: jest.Mocked<Record<string, jest.Mock>>;
   let mockCredentialTokenService: jest.Mocked<Record<string, jest.Mock>>;
+  let mockRefreshTokenService: jest.Mocked<Record<string, jest.Mock>>;
+  let mockRedis: jest.Mocked<Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     mockRepo = {
@@ -42,11 +45,23 @@ describe('OAuthClientService', () => {
       generate: jest.fn().mockResolvedValue('one-time-token'),
     };
 
+    mockRefreshTokenService = {
+      revokeAllForClient: jest.fn().mockResolvedValue(undefined),
+    };
+
+    // Mock de Redis — simula SET/GETDEL sin conexión real.
+    mockRedis = {
+      set: jest.fn().mockResolvedValue('OK'),
+      getdel: jest.fn().mockResolvedValue(null),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OAuthClientService,
         { provide: getRepositoryToken(OAuthClientEntity), useValue: mockRepo },
         { provide: 'ICredentialTokenService', useValue: mockCredentialTokenService },
+        { provide: 'IRefreshTokenService', useValue: mockRefreshTokenService },
+        { provide: REDIS_CLIENT, useValue: mockRedis },
         {
           provide: ConfigService,
           useValue: {
@@ -62,6 +77,12 @@ describe('OAuthClientService', () => {
               };
               if (key in map) return map[key];
               throw new Error(`Config key not found: ${key}`);
+            },
+            get: (key: string) => {
+              const map: Record<string, string | number> = {
+                CREDENTIAL_TOKEN_TTL_MS: 86400000,
+              };
+              return map[key] ?? undefined;
             },
           },
         },
@@ -163,7 +184,7 @@ describe('OAuthClientService', () => {
 
       const result = await service.regenerateSecret(1);
       expect(result.plainSecret).toBeDefined();
-      expect(result.plainSecret.length).toBe(64); // 32 bytes en hex
+      expect(result.plainSecret.length).toBe(64);
       expect(result).not.toHaveProperty('clientSecret');
     });
   });
