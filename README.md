@@ -60,7 +60,7 @@ const popup = window.open(
   `&redirect_uri=${encodeURIComponent('https://tu-app.com/callback')}` +
   `&state=${state}`,
   'sso_login',
-  'width=480,height=600'
+  'width=500,height=420'
 );
 ```
 
