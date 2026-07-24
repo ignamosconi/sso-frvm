@@ -224,6 +224,11 @@ cp .env.example .env
 | `CREDENTIAL_TOKEN_TTL_MS` | TTL del link de credenciales de un solo uso en ms. | `86400000` |
 | `CREDENTIAL_ENCRYPTION_KEY` | Clave AES-256-GCM para cifrar secrets en reposo. **64 chars hex.** Generá con: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | — |
 | `TOTP_ENCRYPTION_KEY` | Clave AES-256-GCM para cifrar secrets TOTP en reposo. **64 chars hex.** Mismo comando. | — |
+| `REDIS_HOST` | Host de Redis. | `localhost` |
+| `REDIS_PORT` | Puerto de Redis. | `6379` |
+| `REDIS_PASSWORD` | Password de Redis. Requerido en producción. | — |
+| `PENDING_2FA_TTL_MS` | TTL del challenge de 2FA pendiente en milisegundos. | `180000` |
+| `PENDING_2FA_MAX_ATTEMPTS` | Máximo de intentos fallidos de TOTP antes de invalidar el challenge. | `5` |
 | `AUTOGESTION_BASE_URL` | URL base del endpoint público de Autogestión UTN FRVM. | `https://webservice.frvm.utn.edu.ar/autogestion` |
 | `ADMIN_PANEL_URL` | URL del panel de administración (para CORS). | `http://localhost:5173` |
 | `SSO_BASE_URL` | URL pública de este backend (usada en emails). | `http://localhost:3000` |
@@ -236,6 +241,7 @@ cp .env.example .env
 | `JWT_REFRESH_SECRET` | Secret para firmar refresh tokens de alumnos. Distinto al anterior. | — |
 | `JWT_ACCESS_EXPIRES_IN` | Expiración del access token de alumnos. | `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Expiración del refresh token de alumnos. | `1d` |
+| `JWT_REFRESH_SESSION_MAX_DURATION` | Duración absoluta máxima de una sesión de alumno, independientemente de la actividad. | `3d` |
 | `JWT_ADMIN_ACCESS_SECRET` | Secret para access tokens de admins. Distinto a los de alumnos. | — |
 | `JWT_ADMIN_REFRESH_SECRET` | Secret para refresh tokens de admins. Distinto a todos los anteriores. | — |
 | `JWT_ADMIN_ACCESS_EXPIRES_IN` | Expiración del access token de admins. | `15m` |
@@ -250,7 +256,7 @@ cp .env.example .env
 | `MAIL_PASS` | Password SMTP (para Gmail, usar App Password). | — |
 | `MAIL_FROM` | Dirección remitente de los emails. | `tu_correo@gmail.com` |
 
-> **En producción** todos los secrets JWT, `CREDENTIAL_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY` y `ADMIN_PASSWORD_SEEDER` deben ser distintos a cualquier valor del `.env.example`. El servidor no arranca si detecta valores por defecto conocidos con `NODE_ENV=production`.
+> **En producción** todos los secrets JWT, `CREDENTIAL_ENCRYPTION_KEY`, `TOTP_ENCRYPTION_KEY`, `REDIS_PASSWORD` y `ADMIN_PASSWORD_SEEDER` deben ser distintos a cualquier valor del `.env.example`. El servidor no arranca si detecta valores por defecto conocidos con `NODE_ENV=production`.
 
 ### Base de datos y migraciones
 
